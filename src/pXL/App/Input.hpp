@@ -11,7 +11,7 @@
 
 namespace px
 {
-	class Client;
+	class Engine;
 
 	constexpr uint32_t k_allButtonsCount = sf::Keyboard::ScancodeCount + sf::Mouse::ButtonCount;
 
@@ -66,7 +66,7 @@ namespace px
 		sf::Vector2i m_delta{};
 		bool m_inWindow{};
 
-		friend Client;
+		friend Engine;
 	};
 
 	class Mapping final
@@ -96,7 +96,7 @@ namespace px
 		std::unordered_map<std::string, InputId> m_binds;
 		const Input* m_input;
 
-		friend Client;
+		friend Engine;
 	};
 
 #pragma region InputIdImplementation

@@ -13,7 +13,7 @@
 
 namespace px
 {
-	class Client;
+	class Engine;
 
 	class SceneCommands
 	{
@@ -92,7 +92,7 @@ namespace px
 		std::vector<SceneInstance> m_scenes;
 		std::optional<SceneRequest> m_request;
 		
-		friend Client;
+		friend Engine;
 	};
 
 	inline void SceneStack::push(const std::string& id)

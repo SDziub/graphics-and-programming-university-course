@@ -6,7 +6,7 @@
 
 namespace px
 {
-	class Client;
+	class Engine;
 
 	class Transition : public sf::Drawable
 	{
@@ -26,7 +26,7 @@ namespace px
 		float m_progress{};
 		State m_state{};
 
-		friend Client;
+		friend Engine;
 	};
 
 	inline void Transition::start(std::function<void()> callback)

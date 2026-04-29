@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Platforming.hpp"
+#include "Game/Constants.hpp"
 
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
@@ -67,11 +68,12 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 {
 	ctx.window.clear(sf::Color::Blue);
 
-	sf::Vector2u size = m_map.size();
+	const sf::Vector2u size = m_map.size();
+	const float unitPixels = api.scaling.getUnit();
 	
 	{
 		sf::Vector2f windowSize = static_cast<sf::Vector2f>(ctx.window.getSize());
-		sf::Vector2f halfScreenTiles = windowSize / static_cast<float>(ctx.unitPixels) / 2.0f;
+		sf::Vector2f halfScreenTiles = windowSize / static_cast<float>(unitPixels) / 2.0f;
 
 		sf::Vector2f position = px::lerp(m_oldCameraPosition, m_cameraPosition, ctx.alpha);
 		position.x = std::min(position.x, m_map.size().x - halfScreenTiles.x);
@@ -79,10 +81,10 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		position.x = std::max(position.x, halfScreenTiles.x);
 		position.y = std::max(position.y, halfScreenTiles.y);
 
-		ctx.window.draw(px::Background(api.assets.backgrounds.get("background"), position.x * ctx.unitPixels));
+		ctx.window.draw(px::Background(api.assets.backgrounds.get("background"), position.x * unitPixels));
 
 		sf::View view(
-			position * static_cast<float>(ctx.unitPixels),
+			position * static_cast<float>(unitPixels),
 			static_cast<sf::Vector2f>(ctx.window.getSize())
 		);
 
@@ -97,16 +99,9 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		{
 			auto sprite(api.assets.tileSprites.get(m_map.at(position).sprite).get(getAdjacent(m_map, position), api.assets.textures));
 
-			sprite.setPosition(sf::Vector2f{
-				static_cast<float>(x * ctx.unitPixels),
-				static_cast<float>(y * ctx.unitPixels)
-			});
+			sprite.setPosition(sf::Vector2f{ x * unitPixels, y * unitPixels });
 
-			auto bounds = sprite.getLocalBounds();
-			sprite.setScale(sf::Vector2f{
-				static_cast<float>(ctx.unitPixels) / bounds.size.x,
-				static_cast<float>(ctx.unitPixels) / bounds.size.y
-			});
+			sprite.setScale(api.scaling.getScale());
 
 			ctx.window.draw(sprite);
 		}
@@ -115,10 +110,11 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 	auto view = m_registry.view<const px::AnimatedSprite, const Transform>();
 
 	view.each([&](const auto& sprite, const auto& transform) {
-		sf::Vector2f position = px::lerp(transform.oldPos, transform.pos, ctx.alpha) * static_cast<float>(ctx.unitPixels);
+		sf::Vector2f position = px::lerp(transform.oldPos, transform.pos, ctx.alpha) * static_cast<float>(unitPixels);
 
 		px::SpriteRenderer renderer(sprite);
 		renderer.setPosition(position);
+		renderer.setScale(api.scaling.getScale());
 		ctx.window.draw(renderer);
 	});
 }
@@ -151,16 +147,6 @@ void Scenes::Platforming::advanceAnimation(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 {
-	constexpr float k_acceleration = 25.0f;
-	constexpr float k_deceleration = 35.0f;
-	constexpr float k_maxSpeed = 6.0f;
-	constexpr float k_jumpVelocity = 13.25f;
-	constexpr float k_downAcceleration = 30.0f;
-	constexpr float k_maxDownAcceleration = 20.0f;
-	constexpr float k_fallMultiplayer = 1.5f;
-	constexpr sf::Time k_bufferedJumpLimit = sf::milliseconds(150);
-	constexpr sf::Time k_cayoteTime = sf::milliseconds(150);
-
 	if (api.mapping.isPressed("Jump"))
 	{
 		m_jumpBuffer = sf::Time::Zero;

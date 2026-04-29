@@ -9,7 +9,7 @@
 #include "Game/Context.hpp"
 #include "Scenes/Scenes.hpp"
 
-class Game : public px::Client
+class Game : public px::Engine
 {
 public:
 

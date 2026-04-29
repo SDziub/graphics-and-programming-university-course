@@ -12,7 +12,16 @@ struct Transform
 	sf::Vector2f oldPos{};
 };
 
-struct Controllable {
+struct Controllable
+{
+	sf::Time cayoteTime{};
+	sf::Time jumpBuffer{};
 	bool canJump{};
 	bool grounded{};
+};
+
+struct Lifetime
+{
+	sf::Time lived;
+	sf::Time max;
 };

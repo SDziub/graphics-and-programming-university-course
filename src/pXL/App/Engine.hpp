@@ -12,10 +12,11 @@
 #include "SceneStack.hpp"
 #include "Transition.hpp"
 #include "Input.hpp"
+#include "Scaling.hpp"
 
 namespace px
 {
-	class Client
+	class Engine
 	{
 	public:
 
@@ -23,13 +24,13 @@ namespace px
 
 	protected:
 
-		Client();
-		virtual ~Client();
+		Engine();
+		virtual ~Engine();
 
-		Client(const Client&) = delete;
-		Client(Client&&) = delete;
-		Client& operator=(const Client&) = delete;
-		Client& operator=(Client&&) = delete;
+		Engine(const Engine&) = delete;
+		Engine(Engine&&) = delete;
+		Engine& operator=(const Engine&) = delete;
+		Engine& operator=(Engine&&) = delete;
 
 		virtual void interceptEvent(const sf::Event& event) {}
 
@@ -55,11 +56,7 @@ namespace px
 		Input tickInput;
 		Mapping mapping{ frameInput };
 		Transition transition;
-
-		ScaleSettings scaleSettings;
-
-		float unit{};
-		float baseMultiplier{};
+		Scaling scaling;
 
 		sf::Time elapsed{};
 
@@ -67,7 +64,7 @@ namespace px
 			scenes,
 			assets,
 			mapping,
-			unit
+			scaling
 		};
 
 		SceneInitCtx apiScene{
@@ -84,8 +81,9 @@ namespace px
 		static constexpr sf::Time k_fixedDt = sf::microseconds(1000000 / k_tps);
 	};
 
-	inline Client::Client() :
-		window(sf::VideoMode(sf::Vector2u{ 1280,720 }), "Game", sf::Style::Default)
+	inline Engine::Engine() :
+		window(sf::VideoMode(sf::Vector2u{ 1280,720 }), "Game", sf::Style::Default),
+		scaling(window)
 	{
 		window.setKeyRepeatEnabled(false);
 		ImGui::SFML::Init(window);
@@ -96,24 +94,15 @@ namespace px
 			tickInput.newUpdate();
 		});
 
-		auto [minUnits, pixelsPerUnit] = scaleSettings;
-		auto minimumWindowSize = static_cast<sf::Vector2u>(minUnits * static_cast<float>(pixelsPerUnit));
-		window.setMinimumSize(minimumWindowSize);
-		auto windowSize = static_cast<sf::Vector2f>(window.getSize());
-		sf::Vector2f ratios{
-			windowSize.x / minimumWindowSize.x,
-			windowSize.y / minimumWindowSize.y
-		};
-		baseMultiplier = static_cast<uint32_t>(std::min(ratios.x, ratios.y));
-		unit = pixelsPerUnit * baseMultiplier;
+		window.setMinimumSize(scaling.getMinimumWindowSize());
 	}
 
-	inline Client::~Client()
+	inline Engine::~Engine()
 	{
 		ImGui::SFML::Shutdown();
 	}
 
-	inline void Client::run()
+	inline void Engine::run()
 	{
 		sf::Clock clock;
 		sf::Time acumulator;
@@ -141,16 +130,7 @@ namespace px
 				}
 			}
 
-			auto [minUnits, pixelsPerUnit] = scaleSettings;
-			auto minimumWindowSize = static_cast<sf::Vector2u>(minUnits * static_cast<float>(pixelsPerUnit));
-			window.setMinimumSize(minimumWindowSize);
-			auto windowSize = static_cast<sf::Vector2f>(window.getSize());
-			sf::Vector2f ratios{
-				windowSize.x / minimumWindowSize.x,
-				windowSize.y / minimumWindowSize.y
-			};
-			baseMultiplier = static_cast<uint32_t>(std::min(ratios.x, ratios.y));
-			unit = pixelsPerUnit * baseMultiplier;
+			scaling.update();
 
 			postEventPreUpdate();
 
@@ -195,9 +175,7 @@ namespace px
 			DrawCtx drawCtx{
 				window,
 				assets,
-				alpha,
-				unit,
-				baseMultiplier
+				alpha
 			};
 
 			window.clear(sf::Color::Black);
@@ -220,7 +198,7 @@ namespace px
 		}
 	}
 
-	inline void Client::recursiveLoad(const std::string& directoryPath, std::function<void(const std::filesystem::path& path, const std::string& name)>&& call)
+	inline void Engine::recursiveLoad(const std::string& directoryPath, std::function<void(const std::filesystem::path& path, const std::string& name)>&& call)
 	{
 		if (!std::filesystem::exists(directoryPath))
 		{

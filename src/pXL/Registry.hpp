@@ -48,6 +48,11 @@ namespace px
 			return *out;
 		}
 
+		const std::unordered_map<std::string, T>& data() const
+		{
+			return m_resources;
+		}
+
 	private:
 
 		std::unordered_map<std::string, T> m_resources;

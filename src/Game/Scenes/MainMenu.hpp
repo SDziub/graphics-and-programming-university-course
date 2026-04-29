@@ -38,8 +38,13 @@ namespace Scenes
 		{
 			ctx.window.clear(sf::Color(0x222222ff));
 
-			sf::RectangleShape mikuShape(static_cast<sf::Vector2f>(ctx.window.getSize()));
-			mikuShape.setTexture(&api.assets.textures.get("player"));
+			const sf::Texture* mikuTexture = &api.assets.textures.get("player");
+			sf::Vector2f mikuTextureSize = sf::Vector2f(mikuTexture->getSize());
+			sf::RectangleShape mikuShape(mikuTextureSize);
+			mikuShape.setTexture(mikuTexture);
+			mikuShape.setOrigin(mikuTextureSize / 2.0f);
+			mikuShape.setPosition(sf::Vector2f(ctx.window.getSize()) / 2.0f);
+			mikuShape.setScale(api.scaling.getScale() * 4.0f);
 
 			ctx.window.draw(mikuShape);
 

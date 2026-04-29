@@ -17,17 +17,18 @@ namespace px
 	class SceneConfig;
 	class Transition;
 	class Mapping;
+	class Scaling;
 
 	struct EngineApi
 	{
 		SceneCommands& comms;
 		const Assets& assets;
 		const Mapping& mapping;
-		const float& unit;
+		const Scaling& scaling;
 	};
 
 	class Scene;
-	class Client;
+	class Engine;
 
 	class SceneInitCtx
 	{
@@ -47,7 +48,7 @@ namespace px
 		EngineApi api;
 
 		friend Scene;
-		friend Client;
+		friend Engine;
 	};
 
 	struct UpdateCtx
@@ -62,8 +63,6 @@ namespace px
 		sf::RenderTarget& window;
 		const Assets& assets;
 		float alpha{};
-		float unitPixels{};
-		float baseMultiplier{};
 	};
 
 	class SceneStack;
