@@ -4,6 +4,7 @@
 
 #include "Game/Context.hpp"
 #include "Game/Tile.hpp"
+#include <filesystem>
 
 namespace Scenes
 {
@@ -16,7 +17,12 @@ namespace Scenes
 		void update(px::UpdateCtx& ctx) override;
 		void draw(px::DrawCtx& ctx) const override;
 		void resizeMap();
+
+		
 	private:
+		entt::registry LE_registry;
+		entt::entity player;
+		std::vector<entt::entity> entities;
 		Context& m_ctx;
 		sf::Vector2i lastMousePos;
 		sf::Vector2i viewPosition{0,0};
@@ -24,21 +30,24 @@ namespace Scenes
 		int windowSize = 720;
 		int mapWidth = 25;
 		int mapHeight = 25;
+
 		px::Grid<Tile> LE_map;
 		int currentTile = 0;
 		int currentMap = 1;
-		std::vector<std::string> maps = {
-			"./resources/maps/1.json",
-			"./resources/maps/2.json",
-			"./resources/maps/3.json",
-			"./resources/maps/4.json",
-			"./resources/maps/5.json",
-			"./resources/maps/6.json",
 
-		};
+		
+
+
+		sf::Rect<float>playerRect;
+		
 		std::vector<std::string> TileName;
 		std::vector<const char*> TileNameC;
-		std::string mapName = "./resources/maps/" + std::to_string(currentMap) + ".json";
+
+		std::string newMapName;
+		std::string currMapName = std::to_string(currentMap);
+		std::string mapPath = "./resources/maps/" + currMapName + ".json";
+		std::string mapPathS = "./resources/maps/" + newMapName + ".json";
+
 
 	};
 }

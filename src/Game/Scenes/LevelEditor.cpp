@@ -5,21 +5,34 @@
 #include "Game/Map.hpp"
 #include <spdlog/spdlog.h>
 
+/*
+	poruszanie graczem myszka
+	
+*/
 
 Scenes::LevelEditor::LevelEditor(px::SceneInitCtx ctx, Context& gctx) :
 	Scene(ctx),
 	m_ctx(gctx),
 	LE_map(sf::Vector2u(mapWidth, mapHeight), m_ctx.tiles["empty"]) 
-{	
+{
+	
 	for (const auto& [tilename, _ ] : m_ctx.tiles) {
 		TileName.push_back(tilename);
 	}
-	
-	
+
+	//for (const auto& [entityName, _] : m_ctx.entities) { }
+
+	//spawning entity
+	player = m_ctx.entities.get("player").spawn(LE_registry);
+	auto pp = LE_registry.get<Transform>(player);
+	SPDLOG_INFO("Spawned player ar {},{}", pp.pos.x, pp.pos.y);
 	LE_tiles = m_ctx.tiles;
 
 	lastMousePos = api.mapping.getMousePosition();
+	
 }
+
+
 
 void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 {
@@ -33,11 +46,11 @@ void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 		static int prevWidth = mapWidth;
 		static int prevHeight = mapHeight;
 
-		ImGui::DragInt("##mapheight", &mapHeight, 0.5f,25,100);
+		ImGui::DragInt("##mapheight", &mapHeight, 0.5f,25,100); //Set map Height
 		if (ImGui::IsItemDeactivatedAfterEdit) {
 			resizeMap();
 		}
-		ImGui::DragInt("##mapWidth", &mapWidth, 0.5f, 25, 100);
+		ImGui::DragInt("##mapWidth", &mapWidth, 0.5f, 25, 100); //Set map Width
 		if (ImGui::IsItemDeactivatedAfterEdit) {
 			resizeMap();
 		}
@@ -45,7 +58,7 @@ void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 		
 		static bool item_highlight = false;
 		int item_highlighted_idx = -1;
-		if (ImGui::BeginListBox("Choose tile"))
+		if (ImGui::BeginListBox("Choose tile")) //Choose tile list
 		{
 			for (int n = 0; n < TileName.size(); n++)
 			{
@@ -61,14 +74,15 @@ void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 			
 			ImGui::EndListBox();
 			
-			if (ImGui::BeginListBox("Choose map"))
+			if (ImGui::BeginListBox("Choose map")) //Choose map list
 			{
-				for (int n = 0; n < maps.size(); n++)
+
+				for (int n = 0; n < m_ctx.maps.size(); n++)
 				{
 					const bool is_selected = (currentMap == n);
-					if (ImGui::Selectable(maps[n].c_str(), is_selected))
+					if (ImGui::Selectable(m_ctx.maps[n].c_str(), is_selected))
 						currentMap = n;
-						mapName = maps[currentMap];
+						mapPath = m_ctx.maps[currentMap];
 					if (item_highlight && ImGui::IsItemHovered())
 						item_highlighted_idx = n;
 
@@ -77,63 +91,84 @@ void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 				}
 				ImGui::EndListBox();
 			}
-			//ImGui::DragInt("##mCurrentMap", &currentMap, 1.f, 0, 2);
-			static char buf5[32] = ""; ImGui::InputText("no blank", buf5, sizeof(buf5), ImGuiInputTextFlags_CharsNoBlank);
 
-			//if (ImGui::Button("New")) {
-			//	std::ofstream newMap()
-			//}
-			if (ImGui::Button("Save")) {
-				saveMap(mapName, LE_map);
-			}
+			
 
-			if (ImGui::Button("Load")) {
-				LE_map = loadMap(mapName, LE_tiles);
-				SPDLOG_INFO("Map size after load: {}x{}", LE_map.size().x, LE_map.size().y);
-				SPDLOG_INFO("Tile [0,0]: {}", LE_map.at({ 0,0 }).tileName);
-			}
+			//Input Map Name
+			static char buf5[255] = ""; ImGui::InputText("no blank", buf5, sizeof(buf5), ImGuiInputTextFlags_CharsNoBlank);
+			
+				if (ImGui::Button("New")) {
+					newMapName = buf5;
+					mapPathS = "./resources/maps/" + newMapName + ".json";
+					saveMap(mapPathS, LE_map);
+					m_ctx.maps.push_back(mapPathS);
+				}ImGui::SameLine();
+
+				if (ImGui::Button("Save")) {
+					saveMap(mapPath, LE_map);
+				}ImGui::SameLine();
+
+				if (ImGui::Button("Load")) {
+					LE_map = loadMap(mapPath, LE_tiles);
+					SPDLOG_INFO("Map size after load: {}x{}", LE_map.size().x, LE_map.size().y);
+					SPDLOG_INFO("Tile [0,0]: {}", LE_map.at({ 0,0 }).tileName);
+				}
 		}
-		
 		ImGui::End();
-		
 	}
 
 	sf::Rect<int> rect{
 		sf::Vector2i(0,0), sf::Vector2i((windowSize / mapHeight),(windowSize / mapHeight))
 	};
 
+	const int tileSize = windowSize / mapHeight;
+
 	sf::Vector2i mousePosition = api.mapping.getMousePosition();
 	mousePosition += viewPosition;
 
-	if (!ImGui::GetIO().WantCaptureMouse)// to sprawia ze jak klikasz po ui to nie stawiaja sie tile pod spodem
-	{
-		// sprobuj to zrobic bez tego loopa na bazie pozycji myszki + offsetu widoku oraz wielkosci tilea
-		for (unsigned int y = 0; y < mapHeight; y++) {
-			for (unsigned int x = 0; x < mapWidth; x++) {
-				rect.position = sf::Vector2i(x * (windowSize / mapHeight), y * (windowSize / mapHeight));
-				if (api.mapping.isHeld(px::InputId::MLeft) && rect.contains(mousePosition)) {
-					sf::Vector2u MP = sf::Vector2u(mousePosition / (windowSize / mapHeight));
-					LE_map.at(MP) = m_ctx.tiles.at(TileName[currentTile]);
-					//LE_map.set(MP, sceneApi.tiles.handle("solid_block")); //change it to currentTile later.
-
-				}
-			}
-		}
-	}
-
 	sf::Vector2i currMousePos = api.mapping.getMousePosition();
+	sf::Vector2f worldMousePos = sf::Vector2f(currMousePos + viewPosition) / float(tileSize);
+	auto playerTransform = LE_registry.get<Transform>(player);
+	auto playerHitbox = LE_registry.get<Hitbox>(player).rect;
+	
+	playerHitbox.position += playerTransform.pos;
+	playerRect = playerHitbox;
+
+	bool isDraggingPlayer = playerHitbox.contains(worldMousePos);
+	
+
+	if (!ImGui::GetIO().WantCaptureMouse)
+	{
+		sf::Vector2i tileCoord = mousePosition / tileSize;
+
+		bool inBounds = tileCoord.x >= 0 && tileCoord.y >= 0
+			&& static_cast<unsigned>(tileCoord.x) < mapWidth
+			&& static_cast<unsigned>(tileCoord.y) < mapHeight;
+
+		if (api.mapping.isHeld(px::InputId::MLeft) && inBounds && !isDraggingPlayer) {
+				sf::Vector2u MP = static_cast<sf::Vector2u>(tileCoord);
+				LE_map.at(MP) = m_ctx.tiles.at(TileName[currentTile]);
+				
+		}
+		if (api.mapping.isHeld(px::InputId::MLeft) && inBounds && isDraggingPlayer) {
+			sf::Vector2i offset = api.mapping.getMouseDelta();
+			auto& transform = LE_registry.get<Transform>(player);
+			transform.pos += sf::Vector2f(offset) / float(tileSize);
+		}
+			
+	}
+	
+
 	if (api.mapping.isHeld(px::InputId::MRight)) {
 		sf::Vector2i mouseDiff = lastMousePos - currMousePos;
 		viewPosition += mouseDiff;
 	}
 	lastMousePos = currMousePos;
-
-	
-
 }
 
 void Scenes::LevelEditor::draw(px::DrawCtx& ctx) const
 {	
+
 	sf::View view(sf::FloatRect{ (sf::Vector2f)viewPosition, (sf::Vector2f)ctx.window.getSize() });
 	uint32_t tileSide = windowSize / LE_map.size().x;
 	ctx.window.setView(view);
@@ -158,6 +193,12 @@ void Scenes::LevelEditor::draw(px::DrawCtx& ctx) const
 			ctx.window.draw(sprite);
 		}
 	}
+	sf::RectangleShape playerShape;
+	playerShape.setSize(playerRect.size * float(tileSide));
+	playerShape.setPosition(playerRect.position * float(tileSide));
+	playerShape.setFillColor(sf::Color::Blue);
+	ctx.window.draw(playerShape);
+
 }
 
 void Scenes::LevelEditor::resizeMap() {
