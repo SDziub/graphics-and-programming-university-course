@@ -8,5 +8,5 @@ using EntityPrefab = px::EntityPrefab<
 	Hitbox,
 	Transform,
 	Controllable,
-	px::AnimatedSprite
+	px::Animation
 >;

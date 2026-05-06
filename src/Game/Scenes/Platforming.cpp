@@ -107,21 +107,21 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		}
 	}
 
-	auto view = m_registry.view<const px::AnimatedSprite, const Transform>();
+	auto view = m_registry.view<const px::Animation, const Transform>();
 
-	view.each([&](const auto& sprite, const auto& transform) {
+	view.each([&](const auto& animation, const auto& transform) {
 		sf::Vector2f position = px::lerp(transform.oldPos, transform.pos, ctx.alpha) * static_cast<float>(unitPixels);
 
-		px::SpriteRenderer renderer(sprite);
-		renderer.setPosition(position);
-		renderer.setScale(api.scaling.getScale());
-		ctx.window.draw(renderer);
+		sf::Sprite sprite = animation.getSprite().value();
+		sprite.setPosition(position);
+		sprite.setScale(api.scaling.getScale());
+		ctx.window.draw(sprite);
 	});
 }
 
 void Scenes::Platforming::advanceAnimation(px::UpdateCtx& ctx)
 {
-	auto view = m_registry.view<const Controllable, const Transform, px::AnimatedSprite>();
+	auto view = m_registry.view<const Controllable, const Transform, px::Animation>();
 	view.each([&](const auto& controllable, const auto& transform, auto& sprite) {
 		sprite.setMirrored(m_dir == -1);
 		sprite.update(ctx.dt);
