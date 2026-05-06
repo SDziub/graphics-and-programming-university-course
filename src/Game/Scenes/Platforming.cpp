@@ -148,23 +148,36 @@ void Scenes::Platforming::advanceAnimation(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 {
-	if (api.mapping.isPressed("Jump"))
-	{
-		m_jumpBuffer = sf::Time::Zero;
-	}
-	else if (m_jumpBuffer)
-	{
-		m_jumpBuffer.value() += ctx.dt;
-	}
+	auto view = m_registry.view<Controllable, Transform, const Hitbox>();
 
-	m_floor += ctx.dt;
-
-	auto view = m_registry.view<Controllable, Transform>();
-
-	view.each([&](auto& controllable, auto& transform) {
-		if (m_jumpBuffer && m_jumpBuffer.value() <= k_bufferedJumpLimit && controllable.canJump && m_floor <= k_cayoteTime)
+	view.each([&](auto& controllable, auto& transform, const auto& hitbox) {
+		if (api.mapping.isPressed("Jump"))
 		{
-			m_jumpBuffer = {};
+			controllable.jumpBuffer = sf::Time::Zero;
+		}
+		else
+		{
+			controllable.jumpBuffer += ctx.dt;
+		}
+
+		controllable.cayoteTime += ctx.dt;
+
+		sf::Vector2 bottomLeft = transform.pos + hitbox.rect.position;
+		bottomLeft.y += hitbox.rect.size.y;
+		sf::Vector2f bottomRight = bottomLeft;
+		bottomRight.x += hitbox.rect.size.x;
+
+		controllable.grounded = raycast(m_map, bottomLeft, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid ||
+			raycast(m_map, bottomRight, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid;
+		
+		if (controllable.grounded)
+		{
+			controllable.cayoteTime = sf::Time::Zero;
+			controllable.canJump = true;
+		}
+
+		if (controllable.jumpBuffer <= k_bufferedJumpLimit && controllable.canJump && controllable.cayoteTime <= k_cayoteTime)
+		{
 			transform.vel.y = -k_jumpVelocity;
 			controllable.canJump = false;
 		}

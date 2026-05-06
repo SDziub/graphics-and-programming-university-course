@@ -78,3 +78,18 @@ Map loadMap(const std::filesystem::path& path, const std::unordered_map<std::str
 	}*/
 	return map;
 }
+
+const Tile& raycast(const Map& map, sf::Vector2f position, sf::Vector2f normal, float length)
+{
+	float traveled = 0.0f;
+	const sf::Vector2f step = normal / 20.0f;
+	float travalPerStep = step.length();
+
+	while (traveled < length && map.at(static_cast<sf::Vector2u>(position)).type == Tile::Type::Air)
+	{
+		traveled += travalPerStep;
+		position += step;
+	}
+
+	return map.at(static_cast<sf::Vector2u>(position));
+}

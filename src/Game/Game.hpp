@@ -49,7 +49,10 @@ public:
 
 		assets.tileSprites.set("solid_block", px::TileSprite{ "solid_block" });
 
-		std::vector<px::AnimationFrame> idle{ {{{ 0, 64  }, { 32, 32 }}, sf::milliseconds(200)} };
+		std::vector<px::AnimationFrame> idle{
+			{{{ 0, 64  }, { 32, 32 }}, sf::milliseconds(300)},
+			{{{ 32, 64  }, { 32, 32 }}, sf::milliseconds(300)}
+		};
 
 		std::vector<px::AnimationFrame> run;
 		for (int32_t x = 0; x < 10; ++x)
