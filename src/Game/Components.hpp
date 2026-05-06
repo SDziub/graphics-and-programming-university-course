@@ -1,8 +1,12 @@
 #pragma once
 
+#include <string>
+
+#include <SFML/System.hpp>
+
 struct Hitbox
 {
-	sf::Rect<float> rect{};
+	sf::FloatRect rect{};
 };
 
 struct Transform
@@ -24,4 +28,22 @@ struct Lifetime
 {
 	sf::Time lived;
 	sf::Time max;
+};
+
+enum class ColiderType
+{
+	Killing,
+	Pushable,
+	Static,
+	Dynamic
+};
+
+struct Colider
+{
+	ColiderType type;
+};
+
+struct EntityType
+{
+	std::string name;
 };
