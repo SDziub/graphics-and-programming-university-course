@@ -35,10 +35,10 @@ namespace px
 		std::string fallback;
 	};
 
-	class AnimatedSprite {
+	class Animation {
 	public:
 
-		explicit AnimatedSprite(const AnimationClipMap& clips)
+		explicit Animation(const AnimationClipMap& clips)
 			: m_clips(&clips)
 		{
 			play(clips.fallback);
@@ -114,7 +114,6 @@ namespace px
 
 					case AnimationClipType::Sticky:
 						m_frameIndex = clip.frames.size() - 1;
-						m_finished = true;
 						m_elapsed = sf::Time::Zero;
 						break;
 					}
@@ -123,25 +122,27 @@ namespace px
 			}
 		}
 
-		const AnimationClip* currentClipData() const
+		std::optional<sf::Sprite> getSprite() const
 		{
-			auto it = m_clips->map.find(m_currentClip);
-			return it == m_clips->map.end()? nullptr : &it->second;
-		}
+			const AnimationClip& clip = m_clips->map.at(m_currentClip);
+			if (clip.frames.empty())
+			{
+				return {};
+			}
 
-		bool finished() const
-		{
-			return m_finished;
-		}
+			sf::IntRect clipRect = clip.frames[m_frameIndex].rectangle;
 
-		size_t frameIndex() const
-		{
-			return m_frameIndex;
-		}
+			if (m_mirrored)
+			{
+				int32_t width = clipRect.size.x;
+				clipRect.size.x = -width;
+				clipRect.position.x += width;
+			}
 
-		const std::string& currentClip() const
-		{
-			return m_currentClip;
+			sf::Sprite sprite(clip.texture, clipRect);
+			sprite.setOrigin(clip.origin);
+
+			return sprite;
 		}
 
 	private:
@@ -152,49 +153,5 @@ namespace px
 		sf::Time m_elapsed{};
 		bool m_mirrored{};
 		bool m_finished{};
-	};
-
-	class SpriteRenderer : public sf::Drawable, public sf::Transformable {
-	public:
-
-		SpriteRenderer(const AnimatedSprite& animation)
-		{
-			const auto* clip = animation.currentClipData();
-			if (!clip || clip->frames.empty())
-			{
-				return;
-			}
-
-			m_texture = &clip->texture;
-			m_rect = clip->frames[animation.frameIndex()].rectangle;
-			m_origin = clip->origin;
-
-			if (animation.isMirrored())
-			{
-				int32_t width = m_rect.size.x;
-				m_rect.size.x = -width;
-				m_rect.position.x += width;
-			}
-		}
-
-	private:
-
-		void draw(sf::RenderTarget& target, sf::RenderStates states) const override
-		{
-			if (!m_texture)
-			{
-				return;
-			}
-
-			sf::Sprite sprite(*m_texture, m_rect);
-			sprite.setOrigin(m_origin);
-
-			states.transform *= getTransform();
-			target.draw(sprite, states);
-		}
-
-		const sf::Texture* m_texture{};
-		sf::IntRect m_rect{};
-		sf::Vector2f m_origin{};
 	};
 }

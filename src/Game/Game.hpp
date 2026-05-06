@@ -109,7 +109,7 @@ public:
 			sf::Vector2f(0.5f, 0.75f)
 		));
 		player.emplace<Controllable>();
-		player.emplace<px::AnimatedSprite>(assets.clipMaps.get("player"));
+		player.emplace<px::Animation>(assets.clipMaps.get("player"));
 		m_ctx.entities.set("player", std::move(player));
 	}
 

@@ -38,7 +38,7 @@ namespace Scenes
 		{
 			ctx.window.clear(sf::Color(0x222222ff));
 
-			const sf::Texture* mikuTexture = &api.assets.textures.get("player");
+			/*const sf::Texture* mikuTexture = &api.assets.textures.get("player");
 			sf::Vector2f mikuTextureSize = sf::Vector2f(mikuTexture->getSize());
 			sf::RectangleShape mikuShape(mikuTextureSize);
 			mikuShape.setTexture(mikuTexture);
@@ -46,7 +46,7 @@ namespace Scenes
 			mikuShape.setPosition(sf::Vector2f(ctx.window.getSize()) / 2.0f);
 			mikuShape.setScale(api.scaling.getScale() * 4.0f);
 
-			ctx.window.draw(mikuShape);
+			ctx.window.draw(mikuShape);*/
 
 			m_menu.draw(ctx);
 		}
