@@ -11,10 +11,9 @@ class ColisionHelper
 public:
 
 	ColisionHelper(const entt::registry& registry) :
-		m_registry(&registry)
-	{
-		calculateMinimumSlide();
-	}
+		m_registry(&registry),
+		m_minimumSlide(1.0f, 1.0f)
+	{}
 
 	void calculateMinimumSlide()
 	{

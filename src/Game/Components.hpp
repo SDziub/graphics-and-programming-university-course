@@ -1,12 +1,30 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 #include <SFML/System.hpp>
+
+enum class ColiderType : uint8_t
+{
+	Custom,
+	Killing,
+	Pushable,
+	Static,
+	Dynamic
+};
 
 struct Hitbox
 {
 	sf::FloatRect rect{};
+	sf::FloatRect precomputed{};
+	ColiderType type{};
+};
+
+enum class Facing : uint8_t
+{
+	Left,
+	Right
 };
 
 struct Transform
@@ -14,6 +32,8 @@ struct Transform
 	sf::Vector2f pos{};
 	sf::Vector2f vel{};
 	sf::Vector2f oldPos{};
+	float jumpStartY{};
+	Facing facing{};
 };
 
 struct Controllable
@@ -30,20 +50,12 @@ struct Lifetime
 	sf::Time max;
 };
 
-enum class ColiderType
-{
-	Killing,
-	Pushable,
-	Static,
-	Dynamic
-};
-
-struct Colider
-{
-	ColiderType type;
-};
-
 struct EntityType
 {
 	std::string name;
+};
+
+struct IsParticle
+{
+
 };

@@ -90,6 +90,24 @@ public:
 
 		assets.clipMaps.set("player", std::move(animations));
 
+		std::vector<px::AnimationFrame> particle;
+		for (int32_t x = 0; x < 4; ++x)
+		{
+			particle.push_back({ sf::IntRect{ {x * 4, 0},{4, 4} }, sf::milliseconds(50) });
+		}
+
+		px::AnimationClip particleClip(assets.textures.get("particle"), std::move(particle), px::AnimationClipType::Looped);
+
+		px::AnimationClipMap particleAnim
+		{
+			{
+				{"_", std::move(particleClip)}
+			},
+			"_"
+		};
+
+		assets.clipMaps.set("cloud_particle", std::move(particleAnim));
+
 		px::BackgroundData background(
 			{
 				{ assets.textures.get("background/0"), 0.03125f },
@@ -114,6 +132,13 @@ public:
 		player.emplace<Controllable>();
 		player.emplace<px::Animation>(assets.clipMaps.get("player"));
 		m_ctx.entities.set("player", std::move(player));
+
+		EntityPrefab cloudParticle;
+		cloudParticle.emplace<Transform>();
+		cloudParticle.emplace<Lifetime>(sf::Time::Zero, sf::milliseconds(400));
+		cloudParticle.emplace<IsParticle>();
+		cloudParticle.emplace<px::Animation>(assets.clipMaps.get("cloud_particle"));
+		m_ctx.entities.set("cloud_particle", std::move(cloudParticle));
 	}
 
 	void preEvent() override

@@ -1,4 +1,7 @@
 #include <algorithm>
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <cstdlib>
 
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
@@ -7,7 +10,8 @@
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
 	m_ctx(gctx),
-	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"])
+	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"]),
+	m_colisionHelper(m_registry)
 {
 	const char* mapBuilder[]{
 		"########################################",
@@ -44,6 +48,8 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	}
 
 	m_ctx.entities.get("player").spawn(m_registry);
+
+	m_colisionHelper.calculateMinimumSlide();
 }
 
 void Scenes::Platforming::update(px::UpdateCtx& ctx)
@@ -55,11 +61,13 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 		api.comms.push("Pause");
 	}
 
-	advanceAnimation(ctx);
+	animate(ctx);
 }
 
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
+	computeLifetime(ctx);
+
 	playerControlSystem(ctx);
 
 	movementAndColisionSystem(ctx);
@@ -99,11 +107,8 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		if (m_map.at(position).sprite != "")
 		{
 			auto sprite(api.assets.tileSprites.get(m_map.at(position).sprite).get(getAdjacent(m_map, position), api.assets.textures));
-
-			sprite.setPosition(sf::Vector2f{ x * unitPixels, y * unitPixels });
-
+			sprite.setPosition(static_cast<sf::Vector2f>(position) * unitPixels);
 			sprite.setScale(api.scaling.getScale());
-
 			ctx.window.draw(sprite);
 		}
 	}
@@ -120,29 +125,47 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 	});
 }
 
-void Scenes::Platforming::advanceAnimation(px::UpdateCtx& ctx)
+void Scenes::Platforming::animate(px::UpdateCtx& ctx)
 {
-	auto view = m_registry.view<const Controllable, const Transform, px::Animation>();
-	view.each([&](const auto& controllable, const auto& transform, auto& sprite) {
-		sprite.setMirrored(m_dir == -1);
-		sprite.update(ctx.dt);
+	auto view = m_registry.view<px::Animation>();
 
+	view.each([&](auto& animation) {
+		animation.setMirrored(m_dir == -1);
+		animation.update(ctx.dt);
+	});
+
+	auto playerView = m_registry.view<const Controllable, const Transform, px::Animation>();
+
+	playerView.each([&](const auto& controllable, const auto& transform, auto& animation) {
 		if (!controllable.grounded)
 		{
 			if (transform.vel.y < 0.0f)
 			{
-				sprite.play("jump");
+				animation.play("jump");
 				return;
 			}
-			sprite.play("fall");
+			animation.play("fall");
 			return;
 		}
 		if (transform.vel.x == 0.0f)
 		{
-			sprite.play("idle");
+			animation.play("idle");
 			return;
 		}
-		sprite.play("run");
+		animation.play("run");
+	});
+}
+
+void Scenes::Platforming::computeLifetime(px::UpdateCtx ctx)
+{
+	auto view = m_registry.view<Lifetime>();
+
+	view.each([&](entt::entity entity, auto& lifetime) {
+		lifetime.lived += ctx.dt;
+		if (lifetime.lived > lifetime.max)
+		{
+			m_registry.destroy(entity);
+		}
 	});
 }
 
@@ -154,6 +177,7 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		if (api.mapping.isPressed("Jump"))
 		{
 			controllable.jumpBuffer = sf::Time::Zero;
+			transform.jumpStartY = transform.pos.y;
 		}
 		else
 		{
@@ -167,8 +191,26 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		sf::Vector2f bottomRight = bottomLeft;
 		bottomRight.x += hitbox.rect.size.x;
 
+		bool wasGrounded = controllable.grounded;
 		controllable.grounded = raycast(m_map, bottomLeft, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid ||
 			raycast(m_map, bottomRight, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid;
+
+		if (!wasGrounded && controllable.grounded && transform.pos.y > transform.jumpStartY - 1e-3)
+		{
+			for (size_t i = 0; i < 10; ++i)
+			{
+				auto particle = m_ctx.entities.get("cloud_particle").spawn(m_registry);
+				auto& particleTransform = m_registry.get<Transform>(particle);
+
+				particleTransform.pos = transform.pos;
+				particleTransform.oldPos = transform.pos;
+
+				float angle = static_cast<float>(rand()) / RAND_MAX * 2.f * M_PI;
+				sf::Vector2f direction(cosf(angle), sinf(angle));
+
+				particleTransform.vel = direction * 1.5f;
+			}
+		}
 		
 		if (controllable.grounded)
 		{
@@ -217,13 +259,22 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 	});
 }
 
+void Scenes::Platforming::precomputeHitboxes(px::UpdateCtx& ctx)
+{
+	auto view = m_registry.view<const Transform, Hitbox>();
+
+	view.each([](const auto& transform, auto& hitbox) {
+		auto precomputed = hitbox.rect;
+		precomputed.position += transform.pos;
+		hitbox.precomputed = precomputed;
+	});
+}
+
 void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 {
-	// The grounded check is stupid but what can you do? will fix it later
+	auto view = m_registry.view<Transform, const Hitbox, const Controllable>();
 
-	auto view = m_registry.view<Transform, Hitbox, Controllable>();
-
-	view.each([&](auto& transform, auto& hitbox, auto& controllable) {
+	view.each([&](entt::entity entity, auto& transform, const auto& hitbox, const auto& controllable) {
 		transform.oldPos = transform.pos;
 
 		sf::FloatRect rect = hitbox.rect;
@@ -307,7 +358,6 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 					currentY -= 1e-3f;
 				}
 			}
-			controllable.grounded = false;
 
 			transform.pos.y = currentY - rect.position.y;
 		}
@@ -335,16 +385,20 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				else
 				{
 					transform.vel.y = 0.0f;
-					m_floor = sf::Time::Zero;
-					controllable.canJump = true;
 				}
 			}
-			controllable.grounded = colided;
 
 			transform.pos.y = currentY - (rect.size.y + rect.position.y);
 		}
 
 		m_oldCameraPosition = m_cameraPosition;
 		m_cameraPosition = px::lerp(m_cameraPosition, { transform.pos.x + m_dir * 1.0f, transform.pos.y - 1.0f }, 0.05f);
+	});
+
+	auto particleView = m_registry.view<Transform, IsParticle>();
+
+	particleView.each([&](auto& transform) {
+		transform.oldPos = transform.pos;
+		transform.pos += transform.vel * ctx.dt.asSeconds();
 	});
 }

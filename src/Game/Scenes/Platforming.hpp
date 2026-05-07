@@ -8,6 +8,7 @@
 #include "Game/Tile.hpp"
 #include "Game/Map.hpp"
 #include "Game/Components.hpp"
+#include "Game/ColisionHelper.hpp"
 
 namespace Scenes
 {
@@ -23,8 +24,10 @@ namespace Scenes
 
 	private:
 
-		void advanceAnimation(px::UpdateCtx& ctx);
+		void animate(px::UpdateCtx& ctx);
+		void computeLifetime(px::UpdateCtx ctx);
 		void playerControlSystem(px::UpdateCtx& ctx);
+		void precomputeHitboxes(px::UpdateCtx& ctx);
 		void movementAndColisionSystem(px::UpdateCtx& ctx);
 
 		Context& m_ctx;
@@ -35,10 +38,9 @@ namespace Scenes
 
 		Map m_map;
 
-		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
+		ColisionHelper m_colisionHelper;
 
-		std::optional<sf::Time> m_jumpBuffer;
-		sf::Time m_floor;
+		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
 
 		int32_t m_dir{ 1 };
 	};
