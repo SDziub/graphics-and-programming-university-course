@@ -49,7 +49,7 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 
 	m_ctx.entities.get("player").spawn(m_registry);
 
-	m_colisionHelper.calculateMinimumSlide();
+	m_colisionHelper.calculateMaxSlide();
 }
 
 void Scenes::Platforming::update(px::UpdateCtx& ctx)
@@ -272,9 +272,13 @@ void Scenes::Platforming::precomputeHitboxes(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 {
-	auto view = m_registry.view<Transform, const Hitbox, const Controllable>();
+	auto view = m_registry.view<Transform, const Hitbox>();
 
-	view.each([&](entt::entity entity, auto& transform, const auto& hitbox, const auto& controllable) {
+	view.each([&](entt::entity entity, Transform& transform, const Hitbox& hitbox) {
+		sf::Vector2f normalizedVelocity = transform.vel.normalized();
+		sf::Vector2f maxSlide = m_colisionHelper.getMaxSlide();
+		sf::Vector2f normalizedMaxSlide = maxSlide.normalized();
+
 		transform.oldPos = transform.pos;
 
 		sf::FloatRect rect = hitbox.rect;

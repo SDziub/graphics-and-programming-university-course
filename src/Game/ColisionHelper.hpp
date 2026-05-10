@@ -12,29 +12,29 @@ public:
 
 	ColisionHelper(const entt::registry& registry) :
 		m_registry(&registry),
-		m_minimumSlide(1.0f, 1.0f)
+		m_maxSlide(1.0f, 1.0f)
 	{}
 
-	void calculateMinimumSlide()
+	void calculateMaxSlide()
 	{
 		auto view = m_registry->view<Hitbox>();
 
 		view.each([&](const auto& hitbox) {
-			m_minimumSlide.x = std::min(m_minimumSlide.x, hitbox.rect.size.x);
-			m_minimumSlide.y = std::min(m_minimumSlide.y, hitbox.rect.size.y);
+			m_maxSlide.x = std::min(m_maxSlide.x, hitbox.rect.size.x);
+			m_maxSlide.y = std::min(m_maxSlide.y, hitbox.rect.size.y);
 		});
 
-		m_minimumSlide.x -= 1e-6;
-		m_minimumSlide.y -= 1e-6;
+		m_maxSlide.x -= 1e-6;
+		m_maxSlide.y -= 1e-6;
 	}
 
-	sf::Vector2f getMinimumSlide() const
+	sf::Vector2f getMaxSlide() const
 	{
-		return m_minimumSlide;
+		return m_maxSlide;
 	}
 
 private:
 
 	const entt::registry* m_registry;
-	sf::Vector2f m_minimumSlide;
+	sf::Vector2f m_maxSlide;
 };
