@@ -84,12 +84,16 @@ const Tile& raycast(const Map& map, sf::Vector2f position, sf::Vector2f normal, 
 	float traveled = 0.0f;
 	const sf::Vector2f step = normal / 20.0f;
 	float travalPerStep = step.length();
+	sf::Vector2u lastIntegerPosition{ 0,0 };
+	auto integerPosition = static_cast<sf::Vector2u>(position);
 
-	while (traveled < length && map.at(static_cast<sf::Vector2u>(position)).type == Tile::Type::Air)
+	while (map.withinBounds(integerPosition) && traveled < length && map.at(integerPosition).type == Tile::Type::Air)
 	{
 		traveled += travalPerStep;
 		position += step;
+		lastIntegerPosition = integerPosition;
+		integerPosition = static_cast<sf::Vector2u>(position);
 	}
 
-	return map.at(static_cast<sf::Vector2u>(position));
+	return map.at(lastIntegerPosition);
 }

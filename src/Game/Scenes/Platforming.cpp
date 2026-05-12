@@ -47,7 +47,10 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		}
 	}
 
-	m_ctx.entities.get("player").spawn(m_registry);
+	auto player = m_ctx.entities.get("player").spawn(m_registry);
+	auto& transform = m_registry.get<Transform>(player);
+	transform.pos = { 2.5f, 2.5f };
+	transform.oldPos = transform.pos;
 
 	m_colisionHelper.calculateMaxSlide();
 }
@@ -122,6 +125,10 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		sprite.setPosition(position);
 		sprite.setScale(api.scaling.getScale());
 		ctx.window.draw(sprite);
+
+		/*ctx.window.setView(ctx.window.getDefaultView());
+		sf::Text positionLavel(api.assets.font, std::to_string(transform.pos.x) + ", " + std::to_string(transform.pos.y));
+		ctx.window.draw(positionLavel);*/
 	});
 }
 
@@ -274,126 +281,62 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 {
 	auto view = m_registry.view<Transform, const Hitbox>();
 
-	view.each([&](entt::entity entity, Transform& transform, const Hitbox& hitbox) {
-		sf::Vector2f normalizedVelocity = transform.vel.normalized();
-		sf::Vector2f maxSlide = m_colisionHelper.getMaxSlide();
-		sf::Vector2f normalizedMaxSlide = maxSlide.normalized();
-
+	view.each([&](entt::entity entity, Transform& transform, const Hitbox& hitbox)
+	{
 		transform.oldPos = transform.pos;
 
-		sf::FloatRect rect = hitbox.rect;
+		sf::FloatRect entityRect = hitbox.rect;
+		entityRect.position += transform.pos;
+		sf::Vector2u size = m_map.size();
+		sf::Vector2f deltaDistance = transform.vel * ctx.dt.asSeconds();
 
-		int32_t minY = rect.position.y + transform.pos.y;
-		int32_t maxY = rect.position.y + rect.size.y + transform.pos.y;
+		static std::vector<std::pair<sf::Vector2u, float>> coliders;
+		coliders.clear();
 
-		if (transform.vel.x < 0.0f)
+		for (uint32_t y{}; y < size.y; ++y)
 		{
-			float currentX = rect.position.x + transform.pos.x;
-			float possibleX = currentX + transform.vel.x * ctx.dt.asSeconds();
-
-			bool colided = false;
-			while (currentX - 1e-3f > possibleX && !colided)
+			for (uint32_t x{}; x < size.x; ++x)
 			{
-				for (size_t y = minY; y <= maxY; ++y)
+				if (m_map.at({ x,y }).type == Tile::Type::Air)
 				{
-					if (m_map.at(sf::Vector2u(currentX - 1e-3f, y)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
+					continue;
 				}
 
-				if (!colided)
+				sf::FloatRect tileRect{ {static_cast<float>(x), static_cast<float>(y)}, {1.0f, 1.0f} };
+				px::ColisionResult result = px::sweptAABB(entityRect, tileRect, deltaDistance);
+
+				if (!result.hit)
 				{
-					currentX -= 1e-3f;
+					continue;
 				}
+
+				coliders.push_back({ {x,y},result.time });
 			}
-
-			transform.pos.x = currentX - rect.position.x;
-		}
-		else if (transform.vel.x > 0.0f)
-		{
-			float currentX = rect.position.x + rect.size.x + transform.pos.x;
-			float possibleX = currentX + transform.vel.x * ctx.dt.asSeconds();
-
-			bool colided = false;
-			while (currentX + 1e-3f < possibleX && !colided)
-			{
-				for (size_t y = minY; y <= maxY; ++y)
-				{
-					if (m_map.at(sf::Vector2u(currentX + 1e-3f, y)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
-				}
-
-				if (!colided)
-				{
-					currentX += 1e-3f;
-				}
-			}
-
-			transform.pos.x = currentX - (rect.size.x + rect.position.x);
 		}
 
-		int32_t minX = rect.position.x + transform.pos.x;
-		int32_t maxX = rect.position.x + rect.size.x + transform.pos.x;
+		std::sort(coliders.begin(), coliders.end(), [](const auto& l, const auto& r) {return l.second < r.second; });
 
-		if (transform.vel.y < 0.0f)
+		for (const auto& colider : coliders)
 		{
-			float currentY = rect.position.y + transform.pos.y;
-			float possibleY = currentY + transform.vel.y * ctx.dt.asSeconds();
+			const auto [x, y] = colider.first;
+			sf::FloatRect tileRect{ {static_cast<float>(x), static_cast<float>(y)}, {1.0f, 1.0f} };
 
-			bool colided = false;
-			while (currentY - 1e-3f > possibleY && !colided)
+			px::ColisionResult result = px::sweptAABB(entityRect, tileRect, deltaDistance);
+
+			if (!result.hit)
 			{
-				for (size_t x = minX; x <= maxX; ++x)
-				{
-					if (m_map.at(sf::Vector2u(x, currentY - 1e-3f)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
-				}
-
-				if (!colided)
-				{
-					currentY -= 1e-3f;
-				}
+				continue;
 			}
 
-			transform.pos.y = currentY - rect.position.y;
+			transform.vel += sf::Vector2f{
+				result.normal.x * std::abs(transform.vel.x),
+				result.normal.y * std::abs(transform.vel.y)
+			} * (1.0f - result.time);
+
+			deltaDistance = transform.vel * ctx.dt.asSeconds();
 		}
-		else if (transform.vel.y > 0.0f)
-		{
-			float currentY = rect.position.y + rect.size.y + transform.pos.y;
-			float possibleY = currentY + transform.vel.y * ctx.dt.asSeconds();
 
-			bool colided = false;
-			while (currentY + 1e-3f < possibleY && !colided)
-			{
-				for (size_t x = minX; x <= maxX; ++x)
-				{
-					if (m_map.at(sf::Vector2u(x, currentY + 1e-3f)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
-				}
-
-				if (!colided)
-				{
-					currentY += 1e-3f;
-				}
-				else
-				{
-					transform.vel.y = 0.0f;
-				}
-			}
-
-			transform.pos.y = currentY - (rect.size.y + rect.position.y);
-		}
+		transform.pos += transform.vel * ctx.dt.asSeconds();
 
 		m_oldCameraPosition = m_cameraPosition;
 		m_cameraPosition = px::lerp(m_cameraPosition, { transform.pos.x + m_dir * 1.0f, transform.pos.y - 1.0f }, 0.05f);

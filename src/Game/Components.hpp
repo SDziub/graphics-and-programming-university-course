@@ -5,20 +5,23 @@
 
 #include <SFML/System.hpp>
 
-enum class ColiderType : uint8_t
-{
-	Custom,
-	Killing,
-	Pushable,
-	Static,
-	Dynamic
-};
-
 struct Hitbox
 {
 	sf::FloatRect rect{};
 	sf::FloatRect precomputed{};
+};
+
+enum class ColiderType : uint8_t
+{
+	Solid,
+	Platform,
+	Killing
+};
+
+struct Colider
+{
 	ColiderType type{};
+	bool dynamic{};
 };
 
 enum class Facing : uint8_t

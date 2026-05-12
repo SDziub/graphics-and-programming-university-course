@@ -124,7 +124,7 @@ public:
 		assets.font = sf::Font("resources/Butterpop.otf");
 
 		EntityPrefab player;
-		player.emplace<Transform>(sf::Vector2f(3.5f, 3.5f), sf::Vector2f(0.0f, 0.0f));
+		player.emplace<Transform>(sf::Vector2f{ 0.0f, 0.0f }, sf::Vector2f{ 0.0f, 0.0f });
 		player.emplace<Hitbox>(sf::Rect<float>(
 			sf::Vector2f(-0.25f, -0.25f),
 			sf::Vector2f(0.5f, 0.75f)

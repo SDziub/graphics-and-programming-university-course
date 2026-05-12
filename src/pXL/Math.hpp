@@ -13,80 +13,57 @@ namespace px
 		return a + alpha * (b - a);
 	}
 
-	struct SweptAABBResult
+	struct ColisionResult
 	{
-		sf::Vector2f normal;
-		float value{};
-		bool accured{};
+		sf::Vector2f point, normal;
+		float time;
+		bool hit{};
 	};
 
-	SweptAABBResult sweptAABB(sf::FloatRect moving, sf::FloatRect stationary, sf::Vector2f deltaDistance)
+	inline ColisionResult rectangleRaycast(const sf::Vector2f origin, const sf::Vector2f deltaDistance, const sf::FloatRect rectangle)
 	{
-		sf::Vector2f inverseEntry, inverseExit;
+		sf::Vector2f timeNear = (rectangle.position - origin);
+		timeNear.x /= deltaDistance.x;
+		timeNear.y /= deltaDistance.y;
+		sf::Vector2f timeFar = rectangle.position + rectangle.size - origin;
+		timeFar.x /= deltaDistance.x;
+		timeFar.y /= deltaDistance.y;
 
-		if (deltaDistance.x > 0.0f)
-		{
-			inverseEntry.x = stationary.position.x - (moving.position.x + moving.size.x);
-			inverseExit.x = (stationary.position.x + stationary.size.x) - moving.position.x;
-		}
-		else
-		{
-			inverseEntry.x = (stationary.position.x + stationary.size.x) - moving.position.x;
-			inverseExit.x = stationary.position.x - (moving.position.x + moving.size.x);
-		}
+		ColisionResult result;
 
-		if (deltaDistance.y > 0.0f)
-		{
-			inverseEntry.y = stationary.position.y - (moving.position.y + moving.size.y);
-			inverseExit.y = (stationary.position.y + stationary.size.y) - moving.position.y;
-		}
-		else
-		{
-			inverseEntry.y = (stationary.position.y + stationary.size.y) - moving.position.y;
-			inverseExit.y = stationary.position.y - (moving.position.y + moving.size.y);
-		}
-
-		sf::Vector2f entry, exit;
-
-		if (deltaDistance.x == 0.0f)
-		{
-			entry.x = -std::numeric_limits<float>::infinity();
-			exit.x = std::numeric_limits<float>::infinity();
-		}
-		else
-		{
-			entry.x = inverseEntry.x / deltaDistance.x;
-			exit.x = inverseExit.x / deltaDistance.x;
-		}
-
-		if (deltaDistance.y == 0.0f)
-		{
-			entry.y = -std::numeric_limits<float>::infinity();
-			exit.y = std::numeric_limits<float>::infinity();
-		}
-		else
-		{
-			entry.y = inverseEntry.y / deltaDistance.y;
-			exit.y = inverseExit.y / deltaDistance.y;
-		}
-
-		float entryTime = std::max(entry.x, entry.y);
-		float exitTime = std::min(exit.x, exit.y);
-
-		SweptAABBResult result;
-		result.accured = !(entryTime > exitTime
-			|| (entry.x < 0.0f && entry.y < 0.0f)
-			|| entry.x > 1.0f
-			|| entry.y > 1.0f);
-
-		if (!result.accured)
+		if (std::isnan(timeNear.x) || std::isnan(timeNear.y) || std::isnan(timeFar.x) || std::isnan(timeFar.y))
 		{
 			return result;
 		}
 
-		if (entry.x > entry.y)
+		if (timeNear.x > timeFar.x)
 		{
-			if (inverseEntry.x < 0.0f)
+			std::swap(timeNear.x, timeFar.x);
+		}
+		if (timeNear.y > timeFar.y)
+		{
+			std::swap(timeNear.y, timeFar.y);
+		}
+
+		if (timeNear.x > timeFar.x || timeNear.y > timeFar.y)
+		{
+			return result;
+		}
+
+		result.time = std::max(timeNear.x, timeNear.y);
+		float remainingTime = std::min(timeFar.x, timeFar.y);
+
+		if (remainingTime < 0.0f || result.time > 1.0f || result.time < 0.0f)
+		{
+			return result;
+		}
+
+		result.hit = true;
+		result.point = origin + result.time * deltaDistance;
+
+		if (timeNear.x > timeNear.y)
+		{
+			if (deltaDistance.x < 0.0f)
 			{
 				result.normal.x = 1.0f;
 			}
@@ -95,9 +72,9 @@ namespace px
 				result.normal.x = -1.0f;
 			}
 		}
-		else
+		else if (timeNear.x < timeNear.y)
 		{
-			if (inverseEntry.y < 0.0f)
+			if (deltaDistance.y < 0.0f)
 			{
 				result.normal.y = 1.0f;
 			}
@@ -106,6 +83,25 @@ namespace px
 				result.normal.y = -1.0f;
 			}
 		}
+
+		return result;
+	}
+
+	inline ColisionResult sweptAABB(const sf::FloatRect dynamic, const sf::FloatRect stationary, const sf::Vector2f deltaDistance)
+	{
+		ColisionResult result;
+
+		if (deltaDistance.x == 0.0f && deltaDistance.y == 0.0f)
+		{
+			return result;
+		}
+
+		sf::FloatRect expandedStationary{
+			stationary.position - dynamic.size / 2.0f,
+			stationary.size + dynamic.size
+		};
+
+		result = rectangleRaycast(dynamic.position + dynamic.size / 2.0f, deltaDistance, expandedStationary);
 
 		return result;
 	}
