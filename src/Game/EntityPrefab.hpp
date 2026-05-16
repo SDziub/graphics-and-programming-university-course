@@ -10,5 +10,6 @@ using EntityPrefab = px::EntityPrefab<
 	Controllable,
 	Lifetime,
 	IsParticle,
-	px::Animation
+	px::Animation,
+	ColiderType
 >;

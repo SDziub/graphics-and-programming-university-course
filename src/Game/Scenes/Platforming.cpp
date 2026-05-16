@@ -2,6 +2,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstdlib>
+#include <optional>
 
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
@@ -47,10 +48,19 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		}
 	}
 
-	auto player = m_ctx.entities.get("player").spawn(m_registry);
-	auto& transform = m_registry.get<Transform>(player);
-	transform.pos = { 2.5f, 2.5f };
-	transform.oldPos = transform.pos;
+	{
+		auto player = m_ctx.entities.get("player").spawn(m_registry);
+		auto& transform = m_registry.get<Transform>(player);
+		transform.pos = { 2.5f, 2.5f };
+		transform.oldPos = transform.pos;
+	}
+
+	{
+		auto spike = m_ctx.entities.get("spike").spawn(m_registry);
+		auto& transform = m_registry.get<Transform>(spike);
+		transform.pos = {8.5f, 8.0f};
+		transform.oldPos = transform.pos;
+	}
 
 	m_colisionHelper.calculateMaxSlide();
 }
@@ -69,6 +79,8 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
+	precomputeHitboxes(ctx);
+
 	computeLifetime(ctx);
 
 	playerControlSystem(ctx);
@@ -130,6 +142,22 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		sf::Text positionLavel(api.assets.font, std::to_string(transform.pos.x) + ", " + std::to_string(transform.pos.y));
 		ctx.window.draw(positionLavel);*/
 	});
+
+	auto hitboxView = m_registry.view<const Transform, const Hitbox>();
+
+	hitboxView.each([&](const Transform& transform, const Hitbox& hitbox)
+	{
+		sf::RectangleShape hitboxRectangle{ hitbox.rect.size * unitPixels };
+		sf::Vector2f position = px::lerp(
+			hitbox.rect.position + transform.oldPos,
+			hitbox.rect.position + transform.pos,
+			ctx.alpha
+		) * static_cast<float>(unitPixels);
+		hitboxRectangle.setPosition(position);
+		hitboxRectangle.setFillColor(sf::Color(255, 0, 0, 150));
+
+		ctx.window.draw(hitboxRectangle);
+	});
 }
 
 void Scenes::Platforming::animate(px::UpdateCtx& ctx)
@@ -188,6 +216,7 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		}
 		else
 		{
+			controllable.jumpBuffer = sf::seconds(999);
 			controllable.jumpBuffer += ctx.dt;
 		}
 
@@ -279,6 +308,18 @@ void Scenes::Platforming::precomputeHitboxes(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 {
+	struct Colider
+	{
+		float time;
+		sf::FloatRect rectangle;
+		std::optional<entt::entity> entity;
+
+		bool operator<(const Colider& o)
+		{
+			return time < o.time;
+		}
+	};
+
 	auto view = m_registry.view<Transform, const Hitbox>();
 
 	view.each([&](entt::entity entity, Transform& transform, const Hitbox& hitbox)
@@ -290,7 +331,7 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 		sf::Vector2u size = m_map.size();
 		sf::Vector2f deltaDistance = transform.vel * ctx.dt.asSeconds();
 
-		static std::vector<std::pair<sf::Vector2u, float>> coliders;
+		static std::vector<Colider> coliders;
 		coliders.clear();
 
 		for (uint32_t y{}; y < size.y; ++y)
@@ -310,22 +351,46 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 					continue;
 				}
 
-				coliders.push_back({ {x,y},result.time });
+				coliders.push_back({ result.time, tileRect });
 			}
 		}
 
-		std::sort(coliders.begin(), coliders.end(), [](const auto& l, const auto& r) {return l.second < r.second; });
+		view.each([&](entt::entity innerEntity, Transform& _, const Hitbox& innerHitbox)
+		{
+			if (entity == innerEntity)
+			{
+				return;
+			}
+
+			px::ColisionResult result = px::sweptAABB(entityRect, innerHitbox.precomputed, deltaDistance);
+
+			if (!result.hit)
+			{
+				return;
+			}
+
+			coliders.push_back({ result.time, innerHitbox.precomputed, innerEntity });
+		});
+
+		std::sort(coliders.begin(), coliders.end());
 
 		for (const auto& colider : coliders)
 		{
-			const auto [x, y] = colider.first;
-			sf::FloatRect tileRect{ {static_cast<float>(x), static_cast<float>(y)}, {1.0f, 1.0f} };
-
-			px::ColisionResult result = px::sweptAABB(entityRect, tileRect, deltaDistance);
+			px::ColisionResult result = px::sweptAABB(entityRect, colider.rectangle, deltaDistance);
 
 			if (!result.hit)
 			{
 				continue;
+			}
+
+			if (colider.entity && m_registry.all_of<ColiderType>(colider.entity.value())
+				&& m_registry.get<ColiderType>(colider.entity.value()) == ColiderType::Hazard
+				&& !ctx.transition.isActive())
+			{
+				ctx.transition.start([&]()
+				{
+					api.comms.replace("Platforming");
+				});
 			}
 
 			transform.vel += sf::Vector2f{
@@ -338,8 +403,11 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 
 		transform.pos += transform.vel * ctx.dt.asSeconds();
 
-		m_oldCameraPosition = m_cameraPosition;
-		m_cameraPosition = px::lerp(m_cameraPosition, { transform.pos.x + m_dir * 1.0f, transform.pos.y - 1.0f }, 0.05f);
+		if (m_registry.all_of<Controllable>(entity))
+		{
+			m_oldCameraPosition = m_cameraPosition;
+			m_cameraPosition = px::lerp(m_cameraPosition, { transform.pos.x + m_dir * 1.0f, transform.pos.y - 1.0f }, 0.05f);
+		}
 	});
 
 	auto particleView = m_registry.view<Transform, IsParticle>();

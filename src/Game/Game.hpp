@@ -108,6 +108,23 @@ public:
 
 		assets.clipMaps.set("cloud_particle", std::move(particleAnim));
 
+		std::vector<px::AnimationFrame> spike{ px::AnimationFrame{sf::IntRect{ {0, 0}, {16, 16} }} };
+
+		px::AnimationClip spikeClip{
+			assets.textures.get("spike"),
+			std::move(spike),
+			px::AnimationClipType::Looped,
+			{8.0f, 16.0f}
+		};
+
+		px::AnimationClipMap spikeAnim
+		{
+			{{"_", std::move(spikeClip)}},
+			"_"
+		};
+
+		assets.clipMaps.set("spike", std::move(spikeAnim));
+
 		px::BackgroundData background(
 			{
 				{ assets.textures.get("background/0"), 0.03125f },
@@ -125,7 +142,7 @@ public:
 
 		EntityPrefab player;
 		player.emplace<Transform>(sf::Vector2f{ 0.0f, 0.0f }, sf::Vector2f{ 0.0f, 0.0f });
-		player.emplace<Hitbox>(sf::Rect<float>(
+		player.emplace<Hitbox>(sf::FloatRect(
 			sf::Vector2f(-0.25f, -0.25f),
 			sf::Vector2f(0.5f, 0.75f)
 		));
@@ -139,6 +156,14 @@ public:
 		cloudParticle.emplace<IsParticle>();
 		cloudParticle.emplace<px::Animation>(assets.clipMaps.get("cloud_particle"));
 		m_ctx.entities.set("cloud_particle", std::move(cloudParticle));
+
+		EntityPrefab spikePrefab;
+		spikePrefab.emplace<Transform>();
+		spikePrefab.emplace<Hitbox>(sf::FloatRect{ {-0.25f, -0.75f}, {0.5f, 0.75f} });
+		spikePrefab.emplace<px::Animation>(assets.clipMaps.get("spike"));
+		spikePrefab.emplace<ColiderType>(ColiderType::Hazard);
+		m_ctx.entities.set("spike", std::move(spikePrefab));
+
 	}
 
 	void preEvent() override

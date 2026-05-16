@@ -13,7 +13,7 @@ namespace px
 	public:
 
 		void start(std::function<void()> callback);
-		bool isMidpoint() const;
+		bool isActive() const;
 
 	private:
 
@@ -35,9 +35,9 @@ namespace px
 		m_state = State::BeforeMidpoint;
 	}
 
-	inline bool Transition::isMidpoint() const
+	inline bool Transition::isActive() const
 	{
-		return m_state == State::Midpoint;
+		return m_state != State::None;
 	}
 
 	inline void Transition::update(float dt)

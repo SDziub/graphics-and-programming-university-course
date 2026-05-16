@@ -15,7 +15,7 @@ enum class ColiderType : uint8_t
 {
 	Solid,
 	Platform,
-	Killing
+	Hazard
 };
 
 struct Colider
