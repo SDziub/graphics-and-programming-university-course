@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FetchContent)
-FetchContent_Declare(SFML
+FetchContent_Declare(
+	SFML
 	GIT_REPOSITORY https://github.com/SFML/SFML.git
 	GIT_TAG 3.0.2
 	GIT_SHALLOW ON
@@ -16,7 +17,8 @@ FetchContent_Declare(SFML
 )
 FetchContent_MakeAvailable(SFML)
 
-FetchContent_Declare(imgui
+FetchContent_Declare(
+	imgui
 	GIT_REPOSITORY https://github.com/ocornut/imgui.git
 	GIT_TAG v1.91.1
 	GIT_SHALLOW ON
@@ -28,7 +30,8 @@ FetchContent_MakeAvailable(imgui)
 set(IMGUI_DIR "${imgui_SOURCE_DIR}" CACHE PATH "imgui top-level directory" FORCE)
 set(IMGUI_SFML_FIND_SFML OFF CACHE BOOL "" FORCE)
 
-FetchContent_Declare(imgui_sfml
+FetchContent_Declare(
+	imgui_sfml
 	GIT_REPOSITORY https://github.com/SFML/imgui-sfml.git
 	GIT_TAG v3.0
 	GIT_SHALLOW ON
@@ -61,6 +64,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(spdlog)
 
+FetchContent_Declare(
+	tgui
+	GIT_REPOSITORY https://github.com/texus/TGUI
+	GIT_TAG v1.12.1
+	GIT_SHALLOW ON
+)
+FetchContent_MakeAvailable(tgui)
+
+set(SFML_GRAPHICS)
+
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 add_executable(${PROJECT_NAME} ${SOURCES}
@@ -80,6 +93,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	nlohmann_json
 	EnTT::EnTT
 	spdlog::spdlog_header_only
+	TGUI::TGUI
 )
 
 file(COPY ${CMAKE_SOURCE_DIR}/resources/ DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources)

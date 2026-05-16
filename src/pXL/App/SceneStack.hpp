@@ -82,6 +82,7 @@ namespace px
 		void popScene();
 
 		void flush();
+		void onEvent(const sf::Event& event);
 		void update(UpdateCtx& ctx);
 		void fixedUpdate(UpdateCtx& ctx);
 		void draw(DrawCtx& ctx) const;
@@ -176,6 +177,11 @@ namespace px
 			return;
 		}
 
+		if (!m_scenes.empty())
+		{
+			m_scenes.back().ptr->onExit();
+		}
+
 		SceneRequest request = m_request.value();
 		m_request = {};
 		const std::string* requested = request.requested ? &request.requested.value() : nullptr;
@@ -210,6 +216,13 @@ namespace px
 		{
 			m_onChangeCallback();
 		}
+	}
+
+	inline void SceneStack::onEvent(const sf::Event& event)
+	{
+		assert(!m_scenes.empty() && "Can't run onEvent() a scene if the scene stack is empty");
+
+		m_scenes.back().ptr->onEvent(event);
 	}
 
 	inline void SceneStack::update(UpdateCtx& ctx)

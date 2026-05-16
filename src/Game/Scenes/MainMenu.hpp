@@ -15,6 +15,7 @@ namespace Scenes
 		{
 			m_menu.addButton("Play", [&]() { ctx.transition.start([&]() { api.comms.push("Platforming"); }); });
 			m_menu.addButton("Level Editor", [&]() { ctx.transition.start([&]() { api.comms.push("LevelEditor"); }); });
+			m_menu.addButton("Settings", [&]() { ctx.transition.start([&]() { api.comms.push("Settings"); }); });
 			m_menu.addButton("Exit", [&]() { window.close(); });
 		}
 
