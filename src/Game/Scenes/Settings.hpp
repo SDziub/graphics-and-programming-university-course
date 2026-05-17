@@ -20,27 +20,34 @@ namespace Scenes
 			m_gui(window),
 			m_mapping(mapping)
 		{
+			m_gui.setFont("resources/Butterpop.otf");
+
 			auto scrollablePanel = tgui::ScrollablePanel::create({ "50%", "70%" });
+			scrollablePanel->setPosition("25%", "20%");
+			scrollablePanel->getRenderer()->setBackgroundColor({ 0,0,0,0 });
 			m_gui.add(scrollablePanel);
 			
 			float y = 0;
+			const float widgetY = 50.f;
+			const float gapY = 5.f;
 
 			for (const auto& [action, key] : m_mapping.data())
 			{
 				auto label = tgui::Label::create(action);
 				label->setPosition(0, y);
-				label->setSize("50%", 20);
+				label->setSize("50%", widgetY);
 				scrollablePanel->add(label);
 				auto button = tgui::Button::create();
 				button->setPosition("50%", y);
-				y += 25;
-				button->setSize("50%", 20);
+				y += widgetY + gapY;
+				button->setSize("50%", widgetY);
 				button->setText(px::stringifyInputId(key));
 				button->onPress([=, this]()
 				{
 					this->m_rebinding = action;
 					button->setText("rebinding");
 				});
+				button->getRenderer()->setRoundedBorderRadius(8.f);
 				scrollablePanel->add(button, "keybind_" + action);
 			}
 		}
