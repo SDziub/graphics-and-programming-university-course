@@ -88,6 +88,8 @@ namespace px
 		sf::Vector2i getMousePosition() const;
 		sf::Vector2i getMouseDelta() const;
 
+		const std::unordered_map<std::string, InputId>& data() const;
+
 	private:
 
 		void setUnderlyingInput(const Input& input);
@@ -449,6 +451,11 @@ namespace px
 	inline void Mapping::bindAssert(const std::string& action) const
 	{
 		assert(m_binds.count(action) && "A binding needs to be set in px::Mapping prior to requesting");
+	}
+
+	inline const std::unordered_map<std::string, InputId>& Mapping::data() const
+	{
+		return m_binds;
 	}
 
 #pragma endregion MappingImplementation

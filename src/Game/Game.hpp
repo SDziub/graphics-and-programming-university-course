@@ -34,7 +34,7 @@ public:
 		scenes.registerScene("LevelEditor", [&]() { return std::make_unique<Scenes::LevelEditor>(apiScene, m_ctx); });
 		scenes.registerScene("Platforming", [&]() { return std::make_unique<Scenes::Platforming>(apiScene, m_ctx); });
 		scenes.registerScene("Pause", [&]() { return std::make_unique<Scenes::Pause>(apiScene); });
-		scenes.registerScene("Settings", [&]() { return std::make_unique<Scenes::Settings>(apiScene, mapping); });
+		scenes.registerScene("Settings", [&]() { return std::make_unique<Scenes::Settings>(apiScene, mapping, window); });
 		scenes.push("MainMenu");
 
 		mapping.set("Jump", px::InputId::Space);
