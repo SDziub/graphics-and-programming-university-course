@@ -3,7 +3,6 @@
 #include <optional>
 #include <string>
 
-#include <SFML/Graphics.hpp>
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
 
@@ -36,6 +35,8 @@ namespace Scenes
 				auto label = tgui::Label::create(action);
 				label->setPosition(0, y);
 				label->setSize("50%", widgetY);
+				label->setHorizontalAlignment(tgui::HorizontalAlignment::Center);
+				label->setVerticalAlignment(tgui::VerticalAlignment::Center);
 				scrollablePanel->add(label);
 				auto button = tgui::Button::create();
 				button->setPosition("50%", y);
@@ -47,7 +48,7 @@ namespace Scenes
 					this->m_rebinding = action;
 					button->setText("rebinding");
 				});
-				button->getRenderer()->setRoundedBorderRadius(8.f);
+				button->getRenderer()->setRoundedBorderRadius(16.f);
 				scrollablePanel->add(button, "keybind_" + action);
 			}
 		}

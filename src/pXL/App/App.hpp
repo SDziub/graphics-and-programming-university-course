@@ -6,5 +6,4 @@
 #include "SceneStack.hpp"
 #include "Engine.hpp"
 #include "Transition.hpp"
-#include "TextMenu.hpp"
 #include "Input.hpp"

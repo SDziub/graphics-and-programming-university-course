@@ -1,5 +1,8 @@
 #pragma once
 
+#include <TGUI/TGUI.hpp>
+#include <TGUI/Backend/SFML-Graphics.hpp>
+
 #include "pXL/pXL.hpp"
 
 namespace Scenes
@@ -8,53 +11,87 @@ namespace Scenes
 	{
 	public:
 
-		MainMenu(px::SceneInitCtx& ctx, sf::Window& window) :
+		MainMenu(px::SceneInitCtx& ctx, sf::RenderWindow& window) :
 			Scene(ctx),
-			m_menu({360, 360}),
+			m_gui(window),
 			m_window(window)
 		{
-			m_menu.addButton("Play", [&]() { ctx.transition.start([&]() { api.comms.push("Platforming"); }); });
-			m_menu.addButton("Level Editor", [&]() { ctx.transition.start([&]() { api.comms.push("LevelEditor"); }); });
-			m_menu.addButton("Settings", [&]() { ctx.transition.start([&]() { api.comms.push("Settings"); }); });
-			m_menu.addButton("Exit", [&]() { window.close(); });
+			m_gui.setFont("resources/Butterpop.otf");
+
+			auto panel = tgui::Panel::create();
+			m_gui.add(panel);
+			panel->setSize("50%", "40%");
+			panel->setPosition("25%", "50%");
+			panel->getRenderer()->setBackgroundColor({ 0,0,0,0 });
+
+			auto button = tgui::Button::create("Play");
+			panel->add(button);
+			button->onClick([&]()
+			{
+				ctx.transition.start([&]()
+				{
+					api.comms.push("Platforming");
+				});
+			});
+			button->setPosition(0, 0);
+			button->setSize("100%", "25%");
+			button->getRenderer()->setRoundedBorderRadius(16.f);
+
+			button = tgui::Button::create("Level Editor");
+			panel->add(button);
+			button->onClick([&]()
+			{
+				ctx.transition.start([&]()
+					{
+						api.comms.push("LevelEditor");
+					});
+			});
+			button->setPosition(0, "25%");
+			button->setSize("100%", "25%");
+			button->getRenderer()->setRoundedBorderRadius(16.f);
+
+			button = tgui::Button::create("Settings");
+			panel->add(button);
+			button->onClick([&]()
+			{
+				ctx.transition.start([&]()
+				{
+					api.comms.push("Settings");
+				});
+			});
+			button->setPosition(0, "50%");
+			button->setSize("100%", "25%");
+			button->getRenderer()->setRoundedBorderRadius(16.f);
+
+			button = tgui::Button::create("Exit");
+			panel->add(button);
+			button->onClick([&]()
+			{
+				ctx.transition.start([&]()
+				{
+					m_window.close();
+				});
+			});
+			button->setPosition(0, "75%");
+			button->setSize("100%", "25%");
+			button->getRenderer()->setRoundedBorderRadius(16.f);
 		}
 
-		void update(px::UpdateCtx& ctx) override
+		void onEvent(const sf::Event& event) override
 		{
-			if (api.mapping.isPressed("Up"))
-			{
-				m_menu.moveUp();
-			}
-			else if (api.mapping.isPressed("Down"))
-			{
-				m_menu.moveDown();
-			}
-			else if (api.mapping.isPressed("Confirm"))
-			{
-				m_menu.activate();
-			}
+			m_gui.handleEvent(event);
 		}
 
 		void draw(px::DrawCtx& ctx) const override
 		{
 			ctx.window.clear(sf::Color(0x222222ff));
 
-			/*const sf::Texture* mikuTexture = &api.assets.textures.get("player");
-			sf::Vector2f mikuTextureSize = sf::Vector2f(mikuTexture->getSize());
-			sf::RectangleShape mikuShape(mikuTextureSize);
-			mikuShape.setTexture(mikuTexture);
-			mikuShape.setOrigin(mikuTextureSize / 2.0f);
-			mikuShape.setPosition(sf::Vector2f(ctx.window.getSize()) / 2.0f);
-			mikuShape.setScale(api.scaling.getScale() * 4.0f);
-
-			ctx.window.draw(mikuShape);*/
-
-			m_menu.draw(ctx);
+			m_gui.draw();
 		}
 
 	private:
 
-		px::TextMenu m_menu;
+		mutable tgui::Gui m_gui;
 		sf::Window& m_window;
 	};
 }
