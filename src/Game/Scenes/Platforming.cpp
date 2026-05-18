@@ -6,14 +6,12 @@
 
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
-#include "Game/ColisionHelper.hpp"
 #include "Game/Device.hpp"
 
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
 	m_ctx(gctx),
-	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"]),
-	m_colisionHelper(m_registry)
+	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"])
 {
 	const char* mapBuilder[]{
 		"########################################",
@@ -69,8 +67,6 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		transform.pos = { 6.5f, 6.5f };
 		transform.oldPos = transform.pos;
 	}
-
-	m_colisionHelper.calculateMaxSlide();
 }
 
 void Scenes::Platforming::update(px::UpdateCtx& ctx)

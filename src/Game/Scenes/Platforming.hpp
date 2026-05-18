@@ -8,7 +8,6 @@
 #include "Game/Tile.hpp"
 #include "Game/Map.hpp"
 #include "Game/Components.hpp"
-#include "Game/ColisionHelper.hpp"
 
 namespace Scenes
 {
@@ -36,8 +35,6 @@ namespace Scenes
 		sf::Time m_elapsed;
 
 		Map m_map;
-
-		ColisionHelper m_colisionHelper;
 
 		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
 
