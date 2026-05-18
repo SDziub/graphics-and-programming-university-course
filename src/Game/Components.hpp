@@ -7,6 +7,7 @@
 
 enum class ColiderType : uint8_t
 {
+	Physics,
 	Solid,
 	Platform,
 	Hazard
@@ -57,8 +58,13 @@ struct IsParticle
 
 };
 
-struct Toggleable
+struct Trigger
 {
 	bool active{};
-	bool negated{};
+	sf::Time timer, accumulated;
+};
+
+struct Toggle
+{
+	bool active{};
 };

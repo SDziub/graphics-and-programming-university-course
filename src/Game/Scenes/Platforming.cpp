@@ -7,7 +7,7 @@
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
 #include "Game/ColisionHelper.hpp"
-#include "Game/Devices.hpp"
+#include "Game/Device.hpp"
 
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
@@ -319,6 +319,11 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 
 	view.each([&](entt::entity entity, Transform& transform, const Hitbox& hitbox)
 	{
+		if (hitbox.type != ColiderType::Physics)
+		{
+			return;
+		}
+
 		transform.oldPos = transform.pos;
 
 		sf::FloatRect entityRect = hitbox.rect;
@@ -352,7 +357,7 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 
 		view.each([&](entt::entity innerEntity, Transform& transform, const Hitbox& innerHitbox)
 		{
-			if (entity == innerEntity)
+			if (entity == innerEntity || innerHitbox.type == ColiderType::Physics)
 			{
 				return;
 			}
@@ -381,8 +386,11 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 			}
 
 			ColiderType type = colider.entity ? m_registry.get<Hitbox>(colider.entity.value()).type : ColiderType::Solid;
+			auto* toggle = colider.entity ? m_registry.try_get<Toggle>(colider.entity.value()) : nullptr;
 
-			bool resolve = type == ColiderType::Platform && result.normal == sf::Vector2f{ 0.f,-1.f } || type != ColiderType::Platform;
+			bool goodAngle = (type == ColiderType::Platform && result.normal == sf::Vector2f{ 0.f,-1.f }) || type != ColiderType::Platform;
+			bool active = !toggle || toggle->active;
+			bool resolve = goodAngle && active;
 
 			if (resolve)
 			{

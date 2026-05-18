@@ -1,0 +1,15 @@
+{
+  "grid": [ 2, 2 ],
+  "default": "_",
+  "texture": "spike",
+  "origin": [ 8, 16 ],
+  "clips": {
+    "_": {
+      "type": "looped",
+      "frames": [
+        [ 0, 0 ]
+      ],
+      "duration": 1
+    }
+  }
+}
