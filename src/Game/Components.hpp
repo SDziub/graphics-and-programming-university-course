@@ -5,12 +5,6 @@
 
 #include <SFML/System.hpp>
 
-struct Hitbox
-{
-	sf::FloatRect rect{};
-	sf::FloatRect precomputed{};
-};
-
 enum class ColiderType : uint8_t
 {
 	Solid,
@@ -18,10 +12,10 @@ enum class ColiderType : uint8_t
 	Hazard
 };
 
-struct Colider
+struct Hitbox
 {
+	sf::FloatRect rect{};
 	ColiderType type{};
-	bool dynamic{};
 };
 
 enum class Facing : uint8_t

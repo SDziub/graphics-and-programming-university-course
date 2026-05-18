@@ -28,7 +28,7 @@ public:
 			assets.textures.set(name, std::move(texture));
 
 			SPDLOG_INFO("Texture loaded: {}", name);
-		});
+			});
 
 		scenes.registerScene("MainMenu", [&]() { return std::make_unique<Scenes::MainMenu>(apiScene, window); });
 		scenes.registerScene("LevelEditor", [&]() { return std::make_unique<Scenes::LevelEditor>(apiScene, m_ctx); });
@@ -45,8 +45,8 @@ public:
 		mapping.set("Confirm", px::InputId::Space);
 		mapping.set("Pause", px::InputId::Escape);
 
-		m_ctx.tiles["empty"] = Tile{Tile::Type::Air, "", "empty"};
-		m_ctx.tiles["solid_block"] = Tile{ Tile::Type::Solid, "solid_block", "solid_block"};
+		m_ctx.tiles["empty"] = Tile{ Tile::Type::Air, "", "empty" };
+		m_ctx.tiles["solid_block"] = Tile{ Tile::Type::Solid, "solid_block", "solid_block" };
 
 		assets.tileSprites.set("solid_block", px::TileSprite{ "solid_block" });
 
@@ -126,6 +126,23 @@ public:
 
 		assets.clipMaps.set("spike", std::move(spikeAnim));
 
+		std::vector<px::AnimationFrame> platform{ px::AnimationFrame{sf::IntRect{ {0, 0}, {16, 16} }} };
+
+		px::AnimationClip platformClip{
+			assets.textures.get("platform"),
+			std::move(platform),
+			px::AnimationClipType::Looped,
+			{8.0f, 8.0f}
+		};
+
+		px::AnimationClipMap platformAnim
+		{
+			{{"_", std::move(platformClip)}},
+			"_"
+		};
+
+		assets.clipMaps.set("platform", std::move(platformAnim));
+
 		px::BackgroundData background(
 			{
 				{ assets.textures.get("background/0"), 0.03125f },
@@ -160,11 +177,15 @@ public:
 
 		EntityPrefab spikePrefab;
 		spikePrefab.emplace<Transform>();
-		spikePrefab.emplace<Hitbox>(sf::FloatRect{ {-0.25f, -0.75f}, {0.5f, 0.75f} });
+		spikePrefab.emplace<Hitbox>(sf::FloatRect{ {-0.25f, -0.75f}, {0.5f, 0.75f} }, ColiderType::Hazard);
 		spikePrefab.emplace<px::Animation>(assets.clipMaps.get("spike"));
-		spikePrefab.emplace<ColiderType>(ColiderType::Hazard);
 		m_ctx.entities.set("spike", std::move(spikePrefab));
 
+		EntityPrefab platformPrefab;
+		platformPrefab.emplace<Transform>();
+		platformPrefab.emplace<Hitbox>(sf::FloatRect{ { -0.5f, -0.5f}, {1.f,1.f} }, ColiderType::Platform);
+		platformPrefab.emplace<px::Animation>(assets.clipMaps.get("platform"));
+		m_ctx.entities.set("platform", std::move(platformPrefab));
 	}
 
 	void preEvent() override

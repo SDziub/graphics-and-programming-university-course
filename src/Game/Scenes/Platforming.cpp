@@ -62,6 +62,13 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		transform.oldPos = transform.pos;
 	}
 
+	{
+		auto platform = m_ctx.entities.get("platform").spawn(m_registry);
+		auto& transform = m_registry.get<Transform>(platform);
+		transform.pos = { 6.5f, 6.5f };
+		transform.oldPos = transform.pos;
+	}
+
 	m_colisionHelper.calculateMaxSlide();
 }
 
@@ -79,8 +86,6 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
-	precomputeHitboxes(ctx);
-
 	computeLifetime(ctx);
 
 	playerControlSystem(ctx);
@@ -295,17 +300,6 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 	});
 }
 
-void Scenes::Platforming::precomputeHitboxes(px::UpdateCtx& ctx)
-{
-	auto view = m_registry.view<const Transform, Hitbox>();
-
-	view.each([](const auto& transform, auto& hitbox) {
-		auto precomputed = hitbox.rect;
-		precomputed.position += transform.pos;
-		hitbox.precomputed = precomputed;
-	});
-}
-
 void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 {
 	struct Colider
@@ -355,21 +349,23 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 			}
 		}
 
-		view.each([&](entt::entity innerEntity, Transform& _, const Hitbox& innerHitbox)
+		view.each([&](entt::entity innerEntity, Transform& transform, const Hitbox& innerHitbox)
 		{
 			if (entity == innerEntity)
 			{
 				return;
 			}
 
-			px::ColisionResult result = px::sweptAABB(entityRect, innerHitbox.precomputed, deltaDistance);
+			sf::FloatRect innerEntityRect = innerHitbox.rect;
+			innerEntityRect.position += transform.pos;
+			px::ColisionResult result = px::sweptAABB(entityRect, innerEntityRect, deltaDistance);
 
 			if (!result.hit)
 			{
 				return;
 			}
 
-			coliders.push_back({ result.time, innerHitbox.precomputed, innerEntity });
+			coliders.push_back({ result.time, innerEntityRect, innerEntity });
 		});
 
 		std::sort(coliders.begin(), coliders.end());
@@ -383,22 +379,27 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				continue;
 			}
 
-			if (colider.entity && m_registry.all_of<ColiderType>(colider.entity.value())
-				&& m_registry.get<ColiderType>(colider.entity.value()) == ColiderType::Hazard
-				&& !ctx.transition.isActive())
+			ColiderType type = colider.entity ? m_registry.get<Hitbox>(colider.entity.value()).type : ColiderType::Solid;
+
+			bool resolve = type == ColiderType::Platform && result.normal == sf::Vector2f{ 0.f,-1.f } || type != ColiderType::Platform;
+
+			if (resolve)
+			{
+				transform.vel += sf::Vector2f{
+					result.normal.x * std::abs(transform.vel.x),
+					result.normal.y * std::abs(transform.vel.y)
+				} *(1.0f - result.time);
+
+				deltaDistance = transform.vel * ctx.dt.asSeconds();
+			}
+
+			if (type == ColiderType::Hazard && !ctx.transition.isActive())
 			{
 				ctx.transition.start([&]()
 				{
 					api.comms.replace("Platforming");
 				});
 			}
-
-			transform.vel += sf::Vector2f{
-				result.normal.x * std::abs(transform.vel.x),
-				result.normal.y * std::abs(transform.vel.y)
-			} * (1.0f - result.time);
-
-			deltaDistance = transform.vel * ctx.dt.asSeconds();
 		}
 
 		transform.pos += transform.vel * ctx.dt.asSeconds();
