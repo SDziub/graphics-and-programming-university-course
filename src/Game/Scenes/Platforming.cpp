@@ -7,6 +7,7 @@
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
 #include "Game/ColisionHelper.hpp"
+#include "Game/Devices.hpp"
 
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),

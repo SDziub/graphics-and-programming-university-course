@@ -56,3 +56,9 @@ struct IsParticle
 {
 
 };
+
+struct Toggleable
+{
+	bool active{};
+	bool negated{};
+};
