@@ -74,7 +74,7 @@ void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 
 				if (is_selected) {
 					ImGui::SetItemDefaultFocus();
-					selectState = 1;
+					
 				}
 			}
 			
@@ -173,6 +173,7 @@ void Scenes::LevelEditor::update(px::UpdateCtx& ctx)
 		if (api.mapping.isReleased(px::InputId::MLeft)) {
 			if (draggedEntity == entt::null && inBounds && selectState == selected::entity) {
 				if (currentEntity >= 0 && currentEntity < (int)entities.size()) {
+					SPDLOG_INFO("Spawning {} at {},{}", entities[currentEntity], worldMousePos.x, worldMousePos.y);
 					auto e = m_ctx.entities.get(entities[currentEntity]).spawn(LE_registry);
 					LE_registry.emplace<EntityType>(e, EntityType{ entities[currentEntity] });
 					LE_registry.get<Transform>(e).pos = worldMousePos;
