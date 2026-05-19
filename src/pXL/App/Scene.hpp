@@ -75,6 +75,8 @@ namespace px
 		virtual ~Scene() = default;
 
 		virtual void onEnter(std::any&& payload) {}
+		virtual void onExit() {}
+		virtual void onEvent(const sf::Event& event) {}
 		virtual void update(UpdateCtx& ctx) {}
 		virtual void fixedUpdate(UpdateCtx& ctx) {}
 		virtual void draw(DrawCtx& ctx) const = 0;

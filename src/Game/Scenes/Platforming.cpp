@@ -1,8 +1,12 @@
 #include <algorithm>
+#define _USE_MATH_DEFINES
+#include <cmath>
+#include <cstdlib>
+#include <optional>
 
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
-#include "Game/ColisionHelper.hpp"
+#include "Game/Device.hpp"
 
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
@@ -43,7 +47,26 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		}
 	}
 
-	m_ctx.entities.get("player").spawn(m_registry);
+	{
+		auto player = m_ctx.entities.get("player").spawn(m_registry);
+		auto& transform = m_registry.get<Transform>(player);
+		transform.pos = { 2.5f, 2.5f };
+		transform.oldPos = transform.pos;
+	}
+
+	{
+		auto spike = m_ctx.entities.get("spike").spawn(m_registry);
+		auto& transform = m_registry.get<Transform>(spike);
+		transform.pos = {8.5f, 8.0f};
+		transform.oldPos = transform.pos;
+	}
+
+	{
+		auto platform = m_ctx.entities.get("platform").spawn(m_registry);
+		auto& transform = m_registry.get<Transform>(platform);
+		transform.pos = { 6.5f, 6.5f };
+		transform.oldPos = transform.pos;
+	}
 }
 
 void Scenes::Platforming::update(px::UpdateCtx& ctx)
@@ -55,11 +78,13 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 		api.comms.push("Pause");
 	}
 
-	advanceAnimation(ctx);
+	animate(ctx);
 }
 
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
+	computeLifetime(ctx);
+
 	playerControlSystem(ctx);
 
 	movementAndColisionSystem(ctx);
@@ -99,11 +124,8 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		if (m_map.at(position).sprite != "")
 		{
 			auto sprite(api.assets.tileSprites.get(m_map.at(position).sprite).get(getAdjacent(m_map, position), api.assets.textures));
-
-			sprite.setPosition(sf::Vector2f{ x * unitPixels, y * unitPixels });
-
+			sprite.setPosition(static_cast<sf::Vector2f>(position) * unitPixels);
 			sprite.setScale(api.scaling.getScale());
-
 			ctx.window.draw(sprite);
 		}
 	}
@@ -117,54 +139,125 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		sprite.setPosition(position);
 		sprite.setScale(api.scaling.getScale());
 		ctx.window.draw(sprite);
+
+		/*ctx.window.setView(ctx.window.getDefaultView());
+		sf::Text positionLavel(api.assets.font, std::to_string(transform.pos.x) + ", " + std::to_string(transform.pos.y));
+		ctx.window.draw(positionLavel);*/
+	});
+
+	auto hitboxView = m_registry.view<const Transform, const Hitbox>();
+
+	hitboxView.each([&](const Transform& transform, const Hitbox& hitbox)
+	{
+		sf::RectangleShape hitboxRectangle{ hitbox.rect.size * unitPixels };
+		sf::Vector2f position = px::lerp(
+			hitbox.rect.position + transform.oldPos,
+			hitbox.rect.position + transform.pos,
+			ctx.alpha
+		) * static_cast<float>(unitPixels);
+		hitboxRectangle.setPosition(position);
+		hitboxRectangle.setFillColor(sf::Color(255, 0, 0, 150));
+
+		ctx.window.draw(hitboxRectangle);
 	});
 }
 
-void Scenes::Platforming::advanceAnimation(px::UpdateCtx& ctx)
+void Scenes::Platforming::animate(px::UpdateCtx& ctx)
 {
-	auto view = m_registry.view<const Controllable, const Transform, px::Animation>();
-	view.each([&](const auto& controllable, const auto& transform, auto& sprite) {
-		sprite.setMirrored(m_dir == -1);
-		sprite.update(ctx.dt);
+	auto view = m_registry.view<px::Animation>();
 
+	view.each([&](auto& animation) {
+		animation.setMirrored(m_dir == -1);
+		animation.update(ctx.dt);
+	});
+
+	auto playerView = m_registry.view<const Controllable, const Transform, px::Animation>();
+
+	playerView.each([&](const auto& controllable, const auto& transform, auto& animation) {
 		if (!controllable.grounded)
 		{
 			if (transform.vel.y < 0.0f)
 			{
-				sprite.play("jump");
+				animation.play("jump");
 				return;
 			}
-			sprite.play("fall");
+			animation.play("fall");
 			return;
 		}
 		if (transform.vel.x == 0.0f)
 		{
-			sprite.play("idle");
+			animation.play("idle");
 			return;
 		}
-		sprite.play("run");
+		animation.play("run");
+	});
+}
+
+void Scenes::Platforming::computeLifetime(px::UpdateCtx ctx)
+{
+	auto view = m_registry.view<Lifetime>();
+
+	view.each([&](entt::entity entity, auto& lifetime) {
+		lifetime.lived += ctx.dt;
+		if (lifetime.lived > lifetime.max)
+		{
+			m_registry.destroy(entity);
+		}
 	});
 }
 
 void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 {
-	if (api.mapping.isPressed("Jump"))
-	{
-		m_jumpBuffer = sf::Time::Zero;
-	}
-	else if (m_jumpBuffer)
-	{
-		m_jumpBuffer.value() += ctx.dt;
-	}
+	auto view = m_registry.view<Controllable, Transform, const Hitbox>();
 
-	m_floor += ctx.dt;
-
-	auto view = m_registry.view<Controllable, Transform>();
-
-	view.each([&](auto& controllable, auto& transform) {
-		if (m_jumpBuffer && m_jumpBuffer.value() <= k_bufferedJumpLimit && controllable.canJump && m_floor <= k_cayoteTime)
+	view.each([&](auto& controllable, auto& transform, const auto& hitbox) {
+		if (api.mapping.isPressed("Jump"))
 		{
-			m_jumpBuffer = {};
+			controllable.jumpBuffer = sf::Time::Zero;
+			transform.jumpStartY = transform.pos.y;
+		}
+		else
+		{
+			controllable.jumpBuffer = sf::seconds(999);
+			controllable.jumpBuffer += ctx.dt;
+		}
+
+		controllable.cayoteTime += ctx.dt;
+
+		sf::Vector2 bottomLeft = transform.pos + hitbox.rect.position;
+		bottomLeft.y += hitbox.rect.size.y;
+		sf::Vector2f bottomRight = bottomLeft;
+		bottomRight.x += hitbox.rect.size.x;
+
+		bool wasGrounded = controllable.grounded;
+		controllable.grounded = raycast(m_map, bottomLeft, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid ||
+			raycast(m_map, bottomRight, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid;
+
+		if (!wasGrounded && controllable.grounded && transform.pos.y > transform.jumpStartY - 1e-3)
+		{
+			for (size_t i = 0; i < 10; ++i)
+			{
+				auto particle = m_ctx.entities.get("cloud_particle").spawn(m_registry);
+				auto& particleTransform = m_registry.get<Transform>(particle);
+
+				particleTransform.pos = transform.pos;
+				particleTransform.oldPos = transform.pos;
+
+				float angle = static_cast<float>(rand()) / RAND_MAX * 2.f * M_PI;
+				sf::Vector2f direction(cosf(angle), sinf(angle));
+
+				particleTransform.vel = direction * 1.5f;
+			}
+		}
+		
+		if (controllable.grounded)
+		{
+			controllable.cayoteTime = sf::Time::Zero;
+			controllable.canJump = true;
+		}
+
+		if (controllable.jumpBuffer <= k_bufferedJumpLimit && controllable.canJump && controllable.cayoteTime <= k_cayoteTime)
+		{
 			transform.vel.y = -k_jumpVelocity;
 			controllable.canJump = false;
 		}
@@ -206,132 +299,127 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 {
-	// The grounded check is stupid but what can you do? will fix it later
+	struct Colider
+	{
+		float time;
+		sf::FloatRect rectangle;
+		std::optional<entt::entity> entity;
 
-	auto view = m_registry.view<Transform, Hitbox, Controllable>();
+		bool operator<(const Colider& o)
+		{
+			return time < o.time;
+		}
+	};
 
-	view.each([&](auto& transform, auto& hitbox, auto& controllable) {
+	auto view = m_registry.view<Transform, const Hitbox>();
+
+	view.each([&](entt::entity entity, Transform& transform, const Hitbox& hitbox)
+	{
+		if (hitbox.type != ColiderType::Physics)
+		{
+			return;
+		}
+
 		transform.oldPos = transform.pos;
 
-		sf::FloatRect rect = hitbox.rect;
+		sf::FloatRect entityRect = hitbox.rect;
+		entityRect.position += transform.pos;
+		sf::Vector2u size = m_map.size();
+		sf::Vector2f deltaDistance = transform.vel * ctx.dt.asSeconds();
 
-		int32_t minY = rect.position.y + transform.pos.y;
-		int32_t maxY = rect.position.y + rect.size.y + transform.pos.y;
+		static std::vector<Colider> coliders;
+		coliders.clear();
 
-		if (transform.vel.x < 0.0f)
+		for (uint32_t y{}; y < size.y; ++y)
 		{
-			float currentX = rect.position.x + transform.pos.x;
-			float possibleX = currentX + transform.vel.x * ctx.dt.asSeconds();
-
-			bool colided = false;
-			while (currentX - 1e-3f > possibleX && !colided)
+			for (uint32_t x{}; x < size.x; ++x)
 			{
-				for (size_t y = minY; y <= maxY; ++y)
+				if (m_map.at({ x,y }).type == Tile::Type::Air)
 				{
-					if (m_map.at(sf::Vector2u(currentX - 1e-3f, y)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
+					continue;
 				}
 
-				if (!colided)
+				sf::FloatRect tileRect{ {static_cast<float>(x), static_cast<float>(y)}, {1.0f, 1.0f} };
+				px::ColisionResult result = px::sweptAABB(entityRect, tileRect, deltaDistance);
+
+				if (!result.hit)
 				{
-					currentX -= 1e-3f;
+					continue;
 				}
+
+				coliders.push_back({ result.time, tileRect });
 			}
-
-			transform.pos.x = currentX - rect.position.x;
-		}
-		else if (transform.vel.x > 0.0f)
-		{
-			float currentX = rect.position.x + rect.size.x + transform.pos.x;
-			float possibleX = currentX + transform.vel.x * ctx.dt.asSeconds();
-
-			bool colided = false;
-			while (currentX + 1e-3f < possibleX && !colided)
-			{
-				for (size_t y = minY; y <= maxY; ++y)
-				{
-					if (m_map.at(sf::Vector2u(currentX + 1e-3f, y)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
-				}
-
-				if (!colided)
-				{
-					currentX += 1e-3f;
-				}
-			}
-
-			transform.pos.x = currentX - (rect.size.x + rect.position.x);
 		}
 
-		int32_t minX = rect.position.x + transform.pos.x;
-		int32_t maxX = rect.position.x + rect.size.x + transform.pos.x;
-
-		if (transform.vel.y < 0.0f)
+		view.each([&](entt::entity innerEntity, Transform& transform, const Hitbox& innerHitbox)
 		{
-			float currentY = rect.position.y + transform.pos.y;
-			float possibleY = currentY + transform.vel.y * ctx.dt.asSeconds();
-
-			bool colided = false;
-			while (currentY - 1e-3f > possibleY && !colided)
+			if (entity == innerEntity || innerHitbox.type == ColiderType::Physics)
 			{
-				for (size_t x = minX; x <= maxX; ++x)
-				{
-					if (m_map.at(sf::Vector2u(x, currentY - 1e-3f)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
-				}
-
-				if (!colided)
-				{
-					currentY -= 1e-3f;
-				}
+				return;
 			}
-			controllable.grounded = false;
 
-			transform.pos.y = currentY - rect.position.y;
-		}
-		else if (transform.vel.y > 0.0f)
+			sf::FloatRect innerEntityRect = innerHitbox.rect;
+			innerEntityRect.position += transform.pos;
+			px::ColisionResult result = px::sweptAABB(entityRect, innerEntityRect, deltaDistance);
+
+			if (!result.hit)
+			{
+				return;
+			}
+
+			coliders.push_back({ result.time, innerEntityRect, innerEntity });
+		});
+
+		std::sort(coliders.begin(), coliders.end());
+
+		for (const auto& colider : coliders)
 		{
-			float currentY = rect.position.y + rect.size.y + transform.pos.y;
-			float possibleY = currentY + transform.vel.y * ctx.dt.asSeconds();
+			px::ColisionResult result = px::sweptAABB(entityRect, colider.rectangle, deltaDistance);
 
-			bool colided = false;
-			while (currentY + 1e-3f < possibleY && !colided)
+			if (!result.hit)
 			{
-				for (size_t x = minX; x <= maxX; ++x)
-				{
-					if (m_map.at(sf::Vector2u(x, currentY + 1e-3f)).type != Tile::Type::Air)
-					{
-						colided = true;
-						break;
-					}
-				}
-
-				if (!colided)
-				{
-					currentY += 1e-3f;
-				}
-				else
-				{
-					transform.vel.y = 0.0f;
-					m_floor = sf::Time::Zero;
-					controllable.canJump = true;
-				}
+				continue;
 			}
-			controllable.grounded = colided;
 
-			transform.pos.y = currentY - (rect.size.y + rect.position.y);
+			ColiderType type = colider.entity ? m_registry.get<Hitbox>(colider.entity.value()).type : ColiderType::Solid;
+			auto* toggle = colider.entity ? m_registry.try_get<Toggle>(colider.entity.value()) : nullptr;
+
+			bool goodAngle = (type == ColiderType::Platform && result.normal == sf::Vector2f{ 0.f,-1.f }) || type != ColiderType::Platform;
+			bool active = !toggle || toggle->active;
+			bool resolve = goodAngle && active;
+
+			if (resolve)
+			{
+				transform.vel += sf::Vector2f{
+					result.normal.x * std::abs(transform.vel.x),
+					result.normal.y * std::abs(transform.vel.y)
+				} *(1.0f - result.time);
+
+				deltaDistance = transform.vel * ctx.dt.asSeconds();
+			}
+
+			if (type == ColiderType::Hazard && !ctx.transition.isActive())
+			{
+				ctx.transition.start([&]()
+				{
+					api.comms.replace("Platforming");
+				});
+			}
 		}
 
-		m_oldCameraPosition = m_cameraPosition;
-		m_cameraPosition = px::lerp(m_cameraPosition, { transform.pos.x + m_dir * 1.0f, transform.pos.y - 1.0f }, 0.05f);
+		transform.pos += transform.vel * ctx.dt.asSeconds();
+
+		if (m_registry.all_of<Controllable>(entity))
+		{
+			m_oldCameraPosition = m_cameraPosition;
+			m_cameraPosition = px::lerp(m_cameraPosition, { transform.pos.x + m_dir * 1.0f, transform.pos.y - 1.0f }, 0.05f);
+		}
+	});
+
+	auto particleView = m_registry.view<Transform, IsParticle>();
+
+	particleView.each([&](auto& transform) {
+		transform.oldPos = transform.pos;
+		transform.pos += transform.vel * ctx.dt.asSeconds();
 	});
 }

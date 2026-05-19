@@ -32,7 +32,7 @@ namespace px
 		Engine& operator=(const Engine&) = delete;
 		Engine& operator=(Engine&&) = delete;
 
-		virtual void interceptEvent(const sf::Event& event) {}
+		virtual void onEvent(const sf::Event& event) {}
 
 		virtual void preEvent() {}
 		virtual void postEventPreUpdate() {}
@@ -122,7 +122,9 @@ namespace px
 
 				ImGui::SFML::ProcessEvent(window, *event);
 
-				interceptEvent(*event);
+				onEvent(*event);
+
+				scenes.onEvent(*event);
 
 				if (event->is<sf::Event::Closed>())
 				{

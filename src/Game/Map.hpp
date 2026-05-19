@@ -28,3 +28,5 @@ inline uint8_t getAdjacent(const Map& map, const sf::Vector2u position)
 
 void saveMap(const std::filesystem::path& path, const Map& map);
 Map loadMap(const std::filesystem::path& path, const std::unordered_map<std::string, Tile>&);
+
+const Tile& raycast(const Map& map, sf::Vector2f start, sf::Vector2f normal, float length);

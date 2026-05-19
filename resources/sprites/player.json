@@ -1,0 +1,51 @@
+{
+  "grid": [ 10, 3 ],
+  "default": "idle",
+  "texture": "entities/player",
+  "origin": [ 16, 24 ],
+  "clips": {
+    "idle": {
+      "type": "looped",
+      "frames": [
+        [ 0, 2 ],
+        [ 1, 2 ]
+      ],
+      "duration": 0.3
+    },
+    "run": {
+      "type": "looped",
+      "frames": [
+        [ 0, 0 ],
+        [ 1, 0 ],
+        [ 2, 0 ],
+        [ 3, 0 ],
+        [ 4, 0 ],
+        [ 5, 0 ],
+        [ 6, 0 ],
+        [ 7, 0 ],
+        [ 8, 0 ],
+        [ 9, 0 ]
+      ],
+      "duration": 0.075
+    },
+    "jump": {
+      "type": "sticky",
+      "frames": [
+        [ 0, 0 ],
+        [ 1, 0 ],
+        [ 2, 0 ],
+        [ 3, 0 ],
+        [ 4, 0 ]
+      ],
+      "duration": 0.075
+    },
+    "fall": {
+      "type": "sticky",
+      "frames": [
+        [ 5, 1 ],
+        [ 6, 1 ]
+      ],
+      "duration": 0.1
+    }
+  }
+}

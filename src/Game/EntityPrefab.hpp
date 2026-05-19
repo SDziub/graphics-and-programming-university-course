@@ -8,5 +8,8 @@ using EntityPrefab = px::EntityPrefab<
 	Hitbox,
 	Transform,
 	Controllable,
-	px::Animation
+	Lifetime,
+	IsParticle,
+	px::Animation,
+	ColiderType
 >;

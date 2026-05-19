@@ -23,7 +23,8 @@ namespace Scenes
 
 	private:
 
-		void advanceAnimation(px::UpdateCtx& ctx);
+		void animate(px::UpdateCtx& ctx);
+		void computeLifetime(px::UpdateCtx ctx);
 		void playerControlSystem(px::UpdateCtx& ctx);
 		void movementAndColisionSystem(px::UpdateCtx& ctx);
 
@@ -36,9 +37,6 @@ namespace Scenes
 		Map m_map;
 
 		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
-
-		std::optional<sf::Time> m_jumpBuffer;
-		sf::Time m_floor;
 
 		int32_t m_dir{ 1 };
 	};
