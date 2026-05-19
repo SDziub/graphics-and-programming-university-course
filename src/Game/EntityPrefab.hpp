@@ -7,6 +7,7 @@
 using EntityPrefab = px::EntityPrefab<
 	Hitbox,
 	Transform,
+	Stationary,
 	Controllable,
 	Lifetime,
 	IsParticle,

@@ -19,10 +19,13 @@ struct Hitbox
 	ColiderType type{};
 };
 
-enum class Facing : uint8_t
+struct Facing
 {
-	Left,
-	Right
+	enum : int8_t
+	{
+		Left = -1,
+		Right = 1
+	};
 };
 
 struct Transform
@@ -32,6 +35,11 @@ struct Transform
 	sf::Vector2f oldPos{};
 	float jumpStartY{};
 	Facing facing{};
+};
+
+struct Stationary
+{
+	sf::Vector2f position;
 };
 
 struct Controllable
@@ -67,4 +75,37 @@ struct Trigger
 struct Toggle
 {
 	bool active{};
+};
+
+// AS is short for Animated State
+
+struct ASDynamic
+{
+	Facing facing{};
+	enum State : uint8_t
+	{
+		Grounded,
+		Jumping,
+		Falling
+	}state{};
+};
+
+struct ASTriger
+{
+	bool active;
+};
+
+struct ASToggle
+{
+	bool active;
+};
+
+struct ASDecoration
+{
+
+};
+
+struct ASTile
+{
+
 };

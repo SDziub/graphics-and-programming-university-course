@@ -27,6 +27,7 @@ namespace Scenes
 		void computeLifetime(px::UpdateCtx ctx);
 		void playerControlSystem(px::UpdateCtx& ctx);
 		void movementAndColisionSystem(px::UpdateCtx& ctx);
+		void updateAnimationStates(px::UpdateCtx& ctx);
 
 		Context& m_ctx;
 

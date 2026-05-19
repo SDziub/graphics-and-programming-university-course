@@ -9,9 +9,8 @@ namespace nl = nlohmann;
 
 Game::Game()
 {
-	//window.setFramerateLimit(60);
-
-	recursiveLoad("resources/textures", [&](const auto& path, const auto& name) {
+	recursiveLoad("resources/textures", [&](const auto& path, const auto& name)
+	{
 		sf::Texture texture;
 		if (!texture.loadFromFile(path))
 		{
@@ -22,7 +21,7 @@ Game::Game()
 		assets.textures.set(name, std::move(texture));
 
 		SPDLOG_INFO("Texture loaded: {}", name);
-		});
+	});
 
 	scenes.registerScene("MainMenu", [&]() { return std::make_unique<Scenes::MainMenu>(apiScene, window); });
 	scenes.registerScene("LevelEditor", [&]() { return std::make_unique<Scenes::LevelEditor>(apiScene, m_ctx); });
@@ -46,98 +45,7 @@ Game::Game()
 
 	loadSprites();
 
-	/*std::vector<px::AnimationFrame> idle{
-		{{{ 0, 64  }, { 32, 32 }}, sf::milliseconds(300)},
-		{{{ 32, 64  }, { 32, 32 }}, sf::milliseconds(300)}
-	};
-
-	std::vector<px::AnimationFrame> run;
-	for (int32_t x = 0; x < 10; ++x)
-	{
-		run.push_back({ sf::IntRect({x * 32, 0}, {32, 32}), sf::milliseconds(75) });
-	}
-
-	std::vector<px::AnimationFrame> jump;
-	for (int32_t x = 0; x < 5; ++x)
-	{
-		jump.push_back({ sf::IntRect({x * 32, 32}, {32, 32}), sf::milliseconds(75) });
-	}
-
-	std::vector<px::AnimationFrame> fall;
-	for (int32_t x = 5; x < 7; ++x)
-	{
-		fall.push_back({ sf::IntRect({x * 32, 32}, {32, 32}), sf::milliseconds(100) });
-	}
-
-	px::AnimationClip idleClip(assets.textures.get("entities/player"), std::move(idle), px::AnimationClipType::Looped, { 16, 24 });
-	px::AnimationClip runClip(assets.textures.get("entities/player"), std::move(run), px::AnimationClipType::Looped, { 16, 24 });
-	px::AnimationClip jumpClip(assets.textures.get("entities/player"), std::move(jump), px::AnimationClipType::Sticky, { 16, 24 });
-	px::AnimationClip fallClip(assets.textures.get("entities/player"), std::move(fall), px::AnimationClipType::Sticky, { 16, 24 });
-
-	px::AnimationClipMap animations
-	{
-		{
-			{"idle", std::move(idleClip)},
-			{"run", std::move(runClip)},
-			{"jump", std::move(jumpClip)},
-			{"fall", std::move(fallClip)}
-		},
-		"idle"
-	};
-
-	assets.clipMaps.set("player", std::move(animations));
-
-	std::vector<px::AnimationFrame> particle;
-	for (int32_t x = 0; x < 4; ++x)
-	{
-		particle.push_back({ sf::IntRect{ {x * 4, 0},{4, 4} }, sf::milliseconds(50) });
-	}
-
-	px::AnimationClip particleClip(assets.textures.get("particle"), std::move(particle), px::AnimationClipType::Looped);
-
-	px::AnimationClipMap particleAnim
-	{
-		{
-			{"_", std::move(particleClip)}
-		},
-		"_"
-	};
-
-	assets.clipMaps.set("cloud_particle", std::move(particleAnim));
-
-	std::vector<px::AnimationFrame> spike{ px::AnimationFrame{sf::IntRect{ {0, 0}, {16, 16} }} };
-
-	px::AnimationClip spikeClip{
-		assets.textures.get("spike"),
-		std::move(spike),
-		px::AnimationClipType::Looped,
-		{8.0f, 16.0f}
-	};
-
-	px::AnimationClipMap spikeAnim
-	{
-		{{"_", std::move(spikeClip)}},
-		"_"
-	};
-
-	assets.clipMaps.set("spike", std::move(spikeAnim));
-
-	std::vector<px::AnimationFrame> platform{ px::AnimationFrame{sf::IntRect{ {0, 0}, {16, 16} }} };
-
-	px::AnimationClip platformClip{
-		assets.textures.get("platform"),
-		std::move(platform),
-		px::AnimationClipType::Looped,
-		{8.0f, 8.0f}
-	};
-
-	px::AnimationClipMap platformAnim
-	{
-		{{"_", std::move(platformClip)}},
-		"_"
-	};
-
-	assets.clipMaps.set("platform", std::move(platformAnim));*/
+	initPrefabGenerators();
 
 	px::BackgroundData background(
 		{
@@ -241,5 +149,35 @@ void Game::loadSprites()
 		}
 
 		assets.clipMaps.set(name, std::move(clips));
+	});
+}
+
+void Game::initPrefabGenerators()
+{
+	m_prefabGenerators.emplace("tile_hazard", [&](const auto& obj)
+	{
+		EntityPrefab prefab;
+		prefab.emplace<Stationary>();
+		prefab.emplace<Hitbox>(sf::FloatRect{ {0.25f, 0.25f}, {0.5f, 0.5f} }, ColiderType::Hazard);
+		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
+		return prefab;
+	});
+
+	m_prefabGenerators.emplace("tile_platform", [&](const auto& obj)
+	{
+		EntityPrefab prefab;
+		prefab.emplace<Stationary>();
+		prefab.emplace<Hitbox>(sf::FloatRect{ {0.f, 0.f}, {1.f, 0.2f} }, ColiderType::Platform);
+		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
+		return prefab;
+	});
+
+	m_prefabGenerators.emplace("player", [&](const auto& obj)
+	{
+		EntityPrefab prefab;
+		prefab.emplace<Stationary>();
+		prefab.emplace<Hitbox>(sf::FloatRect{ {0.f, 0.f}, {1.f, 0.2f} }, ColiderType::Platform);
+		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
+		return prefab;
 	});
 }

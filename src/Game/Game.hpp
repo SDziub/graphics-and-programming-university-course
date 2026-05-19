@@ -1,8 +1,12 @@
 #pragma once
 
 #include <iostream>
+#include <functional>
+#include <unordered_map>
+#include <string>
 
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 
 #include "pXL/pXL.hpp"
 
@@ -17,7 +21,11 @@ public:
 
 private:
 
+	void initPrefabGenerators();
 	void loadSprites();
 
+	using PrefabGenerator = std::function<EntityPrefab(const nlohmann::json& obj)>;
+
 	Context m_ctx;
+	std::unordered_map<std::string, PrefabGenerator> m_prefabGenerators;
 };
