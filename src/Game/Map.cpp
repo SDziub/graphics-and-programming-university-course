@@ -8,7 +8,10 @@
 
 namespace nl = nlohmann;
 
-void saveMap(const std::filesystem::path& path, const Map& map)
+void saveMap(
+	const std::filesystem::path& path, 
+	const Map& map, 
+	const std::unordered_map<std::string,std::pair<int, int>>& entities	)
 {
 	(std::filesystem::exists(path)) 
 		? SPDLOG_INFO("Saved the map to existing file: {}", path.string())
@@ -18,7 +21,9 @@ void saveMap(const std::filesystem::path& path, const Map& map)
 		nl::json mapSaveJ;
 		mapSaveJ["width"] = map.size().x;
 		mapSaveJ["height"] = map.size().y;
+		mapSaveJ["entities"] = entities.size();
 		nl::json rows = nl::json::array();
+		nl::json saveEntities = nl::json::array();
 
 		for (uint32_t y = 0; y < map.size().y; y++) {
 			nl::json row = nl::json::array();
@@ -29,13 +34,20 @@ void saveMap(const std::filesystem::path& path, const Map& map)
 		}
 		mapSaveJ["tiles"] = rows;
 
+		for (auto& [name, pos]: entities) {
+			saveEntities.push_back(nl::json::array({ name, pos.first, pos.second }));
+		}
+
+		mapSaveJ["entities"] = saveEntities;
 		std::ofstream mapSave(path);
 		mapSave << mapSaveJ.dump(4);
 		mapSave.close();	
 }
 
-Map loadMap(const std::filesystem::path& path, const std::unordered_map<std::string, Tile>&  tiles)
-{	
+Map loadMap(
+	const std::filesystem::path& path, 
+	const std::unordered_map<std::string, Tile>&  tiles)
+	{
 
 	std::ifstream loadedMap(path);
 	if (!loadedMap.is_open()) {
@@ -68,14 +80,13 @@ Map loadMap(const std::filesystem::path& path, const std::unordered_map<std::str
 			}
 		}
 	}
-	SPDLOG_INFO("Loaded the map from {}", path.string());
 
-	/*for (uint32_t y = 0;y< height; ++y) {
-		for (uint32_t x = 0;x< width; ++x) {
-			std::cout << map.at({ x,y }).tileName;
-		}
-		std::cout << std::endl;
+
+	/*for (auto& ent : loadedMapJson["entities"]) {
+		entities[ent[0].get<std::string>()] = std::pair<int,int>(ent[1].get<int>(), ent[2].get<int>());
 	}*/
+	
+	SPDLOG_INFO("Loaded the map from {}", path.string());
 	return map;
 }
 
