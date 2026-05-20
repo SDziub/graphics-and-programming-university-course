@@ -197,6 +197,10 @@ void Game::initPrefabGenerators()
 			crumbling.offTime = sf::seconds(5);
 			prefab.emplace<Crumbling>(crumbling);
 		}
+		if (obj.contains("trampoline") && obj["trampoline"] == true)
+		{
+			prefab.emplace<Trampoline>();
+		}
 		return prefab;
 	});
 

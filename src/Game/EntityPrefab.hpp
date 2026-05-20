@@ -15,5 +15,6 @@ using EntityPrefab = px::EntityPrefab<
 	ColiderType,
 	Trigger,
 	Toggle,
-	Crumbling
+	Crumbling,
+	Trampoline
 >;

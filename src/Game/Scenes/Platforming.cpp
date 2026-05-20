@@ -87,6 +87,12 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		stationary.position = { 5.f, 6.f };
 	}
 
+	{
+		auto platform = m_ctx.entities.get("fungi").spawn(m_registry);
+		auto& stationary = m_registry.get<Stationary>(platform);
+		stationary.position = { 16.f, 7.f };
+	}
+
 	auto retractableSpike = m_ctx.entities.get("retractable_spike").spawn(m_registry);
 
 	{
@@ -593,6 +599,21 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 			if (auto * crumbling = m_registry.try_get<Crumbling>(*colider.entity))
 			{
 				crumbling->active = true;
+			}
+
+			if (m_registry.all_of<Trampoline>(*colider.entity))
+			{
+				m_registry.get<px::Animation>(*colider.entity).play("active");
+
+				transform.vel.y = -k_jumpVelocity * 3.f;
+				m_registry.get<Controllable>(entity).canJump = false;
+
+				m_jump.play();
+
+				auto impact = m_ctx.entities.get("impact").spawn(m_registry);
+				auto& impactTransform = m_registry.get<Transform>(impact);
+				impactTransform.pos = transform.pos;
+				impactTransform.oldPos = impactTransform.pos;
 			}
 		}
 

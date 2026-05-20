@@ -86,6 +86,8 @@ struct Crumbling
 	sf::Time onTime, offTime, accumulated;
 };
 
+struct Trampoline{};
+
 // AT is short for Animation Tag
 
 struct ATDynamic{};
