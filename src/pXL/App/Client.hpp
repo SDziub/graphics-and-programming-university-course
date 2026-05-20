@@ -9,15 +9,18 @@
 #include <imgui.h>
 
 #include "SceneStack.hpp"
-#include "InputRaw.hpp"
 #include "Transition.hpp"
+#include "Input.hpp"
 
 namespace px
 {
-	template <Internal I>
 	class Client
 	{
 	public:
+
+		void run();
+
+	protected:
 
 		Client();
 		virtual ~Client();
@@ -26,10 +29,6 @@ namespace px
 		Client(Client&&) = delete;
 		Client& operator=(const Client&) = delete;
 		Client& operator=(Client&&) = delete;
-
-		void run();
-
-	protected:
 
 		virtual void interceptEvent(const sf::Event& event) {}
 
@@ -42,21 +41,36 @@ namespace px
 			std::function<void(const std::filesystem::path& path,
 				const std::string& name)>&& call);
 
-		typename I::Context ctx;
+		struct ScaleSettings
+		{
+			sf::Vector2f minimumUnits{ 20.0f, 10.25f };
+			int32_t pixelsPerUnit{ 16 };
+		};
 
 		Assets assets;
 		sf::RenderWindow window;
-		SceneStack<I> scenes;
-		InputRaw input;
+		SceneStack scenes;
+		Input frameInput;
+		Input tickInput;
+		Mapping mapping{ frameInput };
 		Transition transition;
 
-		ApiScene<I> apiScene{
+		float unit{};
+
+		EngineApi engApi{
 			scenes,
-			input,
 			assets,
-			scenes,
-			transition
+			mapping,
+			unit
 		};
+
+		SceneInitCtx apiScene{
+			scenes,
+			transition,
+			engApi
+		};
+
+		bool showFps{};
 
 	private:
 
@@ -64,26 +78,28 @@ namespace px
 		static constexpr sf::Time k_fixedDt = sf::microseconds(1000000 / k_tps);
 	};
 
-	template <Internal I>
-	inline Client<I>::Client() :
+	inline Client::Client() :
 		window(sf::VideoMode(sf::Vector2u{ 720,720 }), "Game", sf::Style::Close)
 	{
 		window.setKeyRepeatEnabled(false);
-		window.setFramerateLimit(60);
 		ImGui::SFML::Init(window);
 		ImGui::GetIO().FontGlobalScale = 2.0f;
+
+		scenes.setOnChangeCallback([&]() {
+			frameInput.newUpdate();
+			tickInput.newUpdate();
+		});
 	}
 
-	template <Internal I>
-	inline Client<I>::~Client()
+	inline Client::~Client()
 	{
 		ImGui::SFML::Shutdown();
 	}
 
-	template <Internal I>
-	inline void Client<I>::run()
+	inline void Client::run()
 	{
 		sf::Clock clock;
+		sf::Time acumulator;
 
 		while (window.isOpen())
 		{
@@ -91,11 +107,12 @@ namespace px
 
 			preEvent();
 
-			input.newTick();
+			frameInput.newUpdate();
 
 			while (const auto event = window.pollEvent())
 			{
-				input.readEvent(*event);
+				frameInput.readEvent(*event);
+				tickInput.readEvent(*event);
 
 				ImGui::SFML::ProcessEvent(window, *event);
 
@@ -110,14 +127,33 @@ namespace px
 			postEventPreUpdate();
 
 			sf::Time realDt = clock.restart();
+			
+			acumulator = std::min(acumulator + realDt, k_fixedDt * 4.001f);
+
+			UpdateCtx fixedUpdateApi{
+				window,
+				k_fixedDt,
+				transition
+			};
+
+			mapping.setUnderlyingInput(tickInput);
+
+			while (acumulator >= k_fixedDt)
+			{
+				scenes.fixedUpdate(fixedUpdateApi);
+				tickInput.newUpdate();
+				acumulator -= k_fixedDt;
+			}
 
 			ImGui::SFML::Update(window, realDt);
 
-			transition.update(k_fixedDt.asSeconds());
+			mapping.setUnderlyingInput(frameInput);
 
-			ApiUpdate updateApi{
+			transition.update(realDt.asSeconds());
+
+			UpdateCtx updateApi{
 				window,
-				k_fixedDt,
+				realDt,
 				transition
 			};
 
@@ -125,12 +161,15 @@ namespace px
 
 			postUpdatePreDraw();
 
-			window.clear(sf::Color::Black);
+			float alpha = acumulator / k_fixedDt;
 
-			ApiDraw drawApi{
+			DrawCtx drawApi{
 				window,
-				assets
+				assets,
+				alpha
 			};
+
+			window.clear(sf::Color::Black);
 
 			scenes.draw(drawApi);
 
@@ -138,14 +177,19 @@ namespace px
 
 			window.draw(transition);
 
-			window.display();
+			if (showFps)
+			{
+				sf::Text fpsDisplay(assets.font, std::to_string(1.f / realDt.asSeconds()));
+				window.draw(fpsDisplay);
+			}
 
 			postDraw();
+
+			window.display();
 		}
 	}
 
-	template <Internal I>
-	inline void Client<I>::recursiveLoad(const std::string& directoryPath, std::function<void(const std::filesystem::path& path, const std::string& name)>&& call)
+	inline void Client::recursiveLoad(const std::string& directoryPath, std::function<void(const std::filesystem::path& path, const std::string& name)>&& call)
 	{
 		if (!std::filesystem::exists(directoryPath))
 		{

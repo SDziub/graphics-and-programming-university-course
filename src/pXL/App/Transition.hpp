@@ -4,11 +4,8 @@
 
 #include <SFML/Graphics.hpp>
 
-#include "Internal.hpp"
-
 namespace px
 {
-	template <Internal I>
 	class Client;
 
 	class Transition : public sf::Drawable

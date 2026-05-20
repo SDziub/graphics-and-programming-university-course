@@ -1,50 +1,54 @@
 #pragma once
 
-#include "Game/Types.hpp"
+#include "pXL/pXL.hpp"
 
 namespace Scenes
 {
-	class MainMenu : public Scene
+	class MainMenu : public px::Scene
 	{
 	public:
 
-		MainMenu(ApiScene& api, Context& ctx) : Scene(api, ctx), m_menu({360, 360})
+		MainMenu(px::SceneInitCtx& ctx, sf::Window& window) :
+			Scene(ctx),
+			m_menu({360, 360}),
+			m_window(window)
 		{
-			m_menu.addButton("Play", [&]() { api.transition.start([&]() { scene.comms.push(SceneId::Platforming); }); });
-			m_menu.addButton("Level Editor", [&]() { api.transition.start([&]() { scene.comms.push(SceneId::LevelEditor); }); });
-			m_menu.addButton("Exit", [&]() {});
+			m_menu.addButton("Play", [&]() { ctx.transition.start([&]() { api.comms.push("Platforming"); }); });
+			m_menu.addButton("Level Editor", [&]() { ctx.transition.start([&]() { api.comms.push("LevelEditor"); }); });
+			m_menu.addButton("Exit", [&]() { window.close(); });
 		}
 
-		void update(px::ApiUpdate& api) override
+		void update(px::UpdateCtx& ctx) override
 		{
-			if (scene.input.isPressed(sf::Keyboard::Scancode::W))
+			if (api.mapping.isPressed("Up"))
 			{
 				m_menu.moveUp();
 			}
-			else if (scene.input.isPressed(sf::Keyboard::Scancode::S))
+			else if (api.mapping.isPressed("Down"))
 			{
 				m_menu.moveDown();
 			}
-			else if (scene.input.isPressed(sf::Keyboard::Scancode::Space))
+			else if (api.mapping.isPressed("Confirm"))
 			{
 				m_menu.activate();
 			}
 		}
 
-		void draw(px::ApiDraw& api) const override
+		void draw(px::DrawCtx& ctx) const override
 		{
-			api.window.clear(sf::Color(0x222222ff));
+			ctx.window.clear(sf::Color(0x222222ff));
 
-			sf::RectangleShape mikuShape(static_cast<sf::Vector2f>(api.window.getSize()));
+			sf::RectangleShape mikuShape(static_cast<sf::Vector2f>(ctx.window.getSize()));
 			mikuShape.setTexture(&api.assets.textures.get("player"));
 
-			api.window.draw(mikuShape);
+			ctx.window.draw(mikuShape);
 
-			m_menu.draw(api);
+			m_menu.draw(ctx);
 		}
 
 	private:
 
 		px::TextMenu m_menu;
+		sf::Window& m_window;
 	};
 }

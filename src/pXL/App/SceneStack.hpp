@@ -4,28 +4,29 @@
 #include <memory>
 #include <functional>
 #include <unordered_map>
-#include <assert.h>
+#include <cassert>
+#include <string>
+#include <any>
+#include <utility>
 
 #include "Scene.hpp"
 
 namespace px
 {
-	template <Internal I>
 	class Client;
 
-	template <Internal I>
 	class SceneCommands
 	{
 	public:
 
-		virtual void push(I::SceneId id) = 0;
-		virtual void push(I::SceneId id, I::ScenePayload payload) = 0;
+		virtual void push(const std::string& id) = 0;
+		virtual void push(const std::string& id, std::any&& payload) = 0;
 		virtual void pop() = 0;
-		virtual void pop(I::ScenePayload payload) = 0;
-		virtual void replace(I::SceneId id) = 0;
-		virtual void replace(I::SceneId id, I::ScenePayload payload) = 0;
-		virtual void popUntil(I::SceneId id) = 0;
-		virtual void popUntil(I::SceneId id, I::ScenePayload payload) = 0;
+		virtual void pop(std::any&& payload) = 0;
+		virtual void replace(const std::string& id) = 0;
+		virtual void replace(const std::string& id, std::any&& payload) = 0;
+		virtual void popUntil(const std::string& id) = 0;
+		virtual void popUntil(const std::string& id, std::any&& payload) = 0;
 		virtual bool isRequestPending() const = 0;
 	};
 
@@ -36,24 +37,23 @@ namespace px
 		virtual void setTransparency(bool transparent) = 0;
 	};
 
-	template <Internal I>
-	class SceneStack final : public SceneCommands<I>, public SceneConfig
+	class SceneStack final : public SceneCommands, public SceneConfig
 	{
 	public:
 
-		using SceneFactory = std::function<std::unique_ptr<Scene<I>>()>;
+		using SceneFactory = std::function<std::unique_ptr<Scene>()>;
 
-		void push(I::SceneId id) override;
-		void push(I::SceneId id, I::ScenePayload payload) override;
+		void push(const std::string& id) override;
+		void push(const std::string& id, std::any&& payload) override;
 		void pop() override;
-		void pop(I::ScenePayload payload) override;
-		void replace(I::SceneId id) override;
-		void replace(I::SceneId id, I::ScenePayload payload) override;
-		void popUntil(I::SceneId id) override;
-		void popUntil(I::SceneId id, I::ScenePayload payload) override;
+		void pop(std::any&& payload) override;
+		void replace(const std::string& id) override;
+		void replace(const std::string& id, std::any&& payload) override;
+		void popUntil(const std::string& id) override;
+		void popUntil(const std::string& id, std::any&& payload) override;
 		bool isRequestPending() const override;
 
-		void registerScene(I::SceneId id, SceneFactory factoryFunction);
+		void registerScene(const std::string& id, SceneFactory factoryFunction);
 		bool empty() const;
 
 	private:
@@ -65,133 +65,120 @@ namespace px
 		struct SceneRequest
 		{
 			SceneAction action;
-			std::optional<typename I::SceneId> requested;
-			std::optional<typename I::ScenePayload> payload;
+			std::optional<std::string> requested;
+			std::any payload;
 		};
 
 		struct SceneInstance
 		{
-			SceneInstance(I::SceneId id) : id(id) {}
+			SceneInstance(const std::string& id) : id(id) {}
 
-			std::unique_ptr<Scene<I>> ptr{};
-			I::SceneId id;
+			std::string id;
+			std::unique_ptr<Scene> ptr{};
 			bool isTransparent{};
 		};
 
-		void pushScene(I::SceneId id);
+		void pushScene(const std::string& id);
 		void popScene();
 
 		void flush();
-		void update(ApiUpdate& api);
-		void draw(ApiDraw& api) const;
+		void update(UpdateCtx& ctx);
+		void fixedUpdate(UpdateCtx& ctx);
+		void draw(DrawCtx& ctx) const;
+		void setOnChangeCallback(std::function<void()> callback);
 
-		std::unordered_map<typename I::SceneId, SceneFactory> m_factories;
+		std::unordered_map<std::string, SceneFactory> m_factories;
+		std::function<void()> m_onChangeCallback;
 		std::vector<SceneInstance> m_scenes;
 		std::optional<SceneRequest> m_request;
-		Transition m_transition;
 		
-		friend Client<I>;
+		friend Client;
 	};
 
-	template <Internal I>
-	inline void SceneStack<I>::push(I::SceneId id)
+	inline void SceneStack::push(const std::string& id)
 	{
 		m_request = { SceneAction::Push, id, {} };
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::push(I::SceneId id, I::ScenePayload payload)
+	inline void SceneStack::push(const std::string& id, std::any&& payload)
 	{
-		m_request = { SceneAction::Push, id, payload };
+		m_request = { SceneAction::Push, id, std::move(payload) };
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::pop()
+	inline void SceneStack::pop()
 	{
 		m_request = { SceneAction::Pop, {}, {}};
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::pop(I::ScenePayload payload)
+	inline void SceneStack::pop(std::any&& payload)
 	{
-		m_request = { SceneAction::Pop, {}, payload };
+		m_request = { SceneAction::Pop, {}, std::move(payload) };
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::replace(I::SceneId id)
+	inline void SceneStack::replace(const std::string& id)
 	{
 		m_request = { SceneAction::Replace, id, {} };
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::replace(I::SceneId id, I::ScenePayload payload)
+	inline void SceneStack::replace(const std::string& id, std::any&& payload)
 	{
-		m_request = { SceneAction::Replace, id, payload };
+		m_request = { SceneAction::Replace, id, std::move(payload) };
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::popUntil(I::SceneId id)
+	inline void SceneStack::popUntil(const std::string& id)
 	{
 		m_request = { SceneAction::PopUntil, id, {} };
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::popUntil(I::SceneId id, I::ScenePayload payload)
+	inline void SceneStack::popUntil(const std::string& id, std::any&& payload)
 	{
-		m_request = { SceneAction::PopUntil, id, payload };
+		m_request = { SceneAction::PopUntil, id, std::move(payload) };
 	}
 
-	template <Internal I>
-	inline bool SceneStack<I>::isRequestPending() const
+	inline bool SceneStack::isRequestPending() const
 	{
 		return m_request.has_value();
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::registerScene(I::SceneId id, SceneFactory factoryFunction)
+	inline void SceneStack::registerScene(const std::string& id, SceneFactory factoryFunction)
 	{
 		m_factories.insert_or_assign(id, std::move(factoryFunction));
 	}
 
-	template <Internal I>
-	inline bool SceneStack<I>::empty() const
+	inline bool SceneStack::empty() const
 	{
 		return m_scenes.empty();
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::setTransparency(bool transparent)
+	inline void SceneStack::setTransparency(bool transparent)
 	{
 		assert(!m_scenes.empty() && "Can't set a transparency on a top scene if there is no top scene");
 		m_scenes.back().isTransparent = transparent;
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::pushScene(I::SceneId id)
+	inline void SceneStack::pushScene(const std::string& id)
 	{
 		assert(m_factories.count(id) && "Can't push() an unregistered scene onto a scene stack");
 		m_scenes.emplace_back(id);
 		m_scenes.back().ptr = m_factories.at(id)();
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::popScene()
+	inline void SceneStack::popScene()
 	{
 		assert(!m_scenes.empty() && "Can't pop() a scene from an empty scene stack");
 		m_scenes.pop_back();
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::flush()
+	inline void SceneStack::flush()
 	{
 		if (!m_request)
 		{
 			return;
 		}
 
-		const SceneRequest request = m_request.value();
+		SceneRequest request = m_request.value();
 		m_request = {};
-		const I::SceneId* requested = request.requested ? &request.requested.value() : nullptr;
+		const std::string* requested = request.requested ? &request.requested.value() : nullptr;
 
 		if (request.action == SceneAction::Pop)
 		{
@@ -217,19 +204,29 @@ namespace px
 		}
 
 		assert(!m_scenes.empty() && "Can't run onEnter() if the scene stack is empty");
-		m_scenes.back().ptr->onEnter(request.payload ? &request.payload.value() : nullptr);
+		m_scenes.back().ptr->onEnter(std::move(request.payload));
+
+		if (m_onChangeCallback)
+		{
+			m_onChangeCallback();
+		}
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::update(ApiUpdate& api)
+	inline void SceneStack::update(UpdateCtx& ctx)
 	{
 		assert(!m_scenes.empty() && "Can't run update() a scene if the scene stack is empty");
 
-		m_scenes.back().ptr->update(api);
+		m_scenes.back().ptr->update(ctx);
 	}
 
-	template <Internal I>
-	inline void SceneStack<I>::draw(ApiDraw& api) const
+	inline void SceneStack::fixedUpdate(UpdateCtx& ctx)
+	{
+		assert(!m_scenes.empty() && "Can't run fixedUpdate() a scene if the scene stack is empty");
+
+		m_scenes.back().ptr->fixedUpdate(ctx);
+	}
+
+	inline void SceneStack::draw(DrawCtx& ctx) const
 	{
 		assert(!m_scenes.empty() && "Can't run draw() a scene if a scene stack is empty");
 
@@ -240,9 +237,25 @@ namespace px
 			--firstRenderable;
 		}
 
+		DrawCtx dummyCtx = ctx;
+		dummyCtx.alpha = 1.0f;
+
 		for (size_t i = firstRenderable; i < count; ++i)
 		{
-			m_scenes[i].ptr->draw(api);
+			if (i == count - 1)
+			{
+				m_scenes[i].ptr->draw(ctx);
+			}
+			else
+			{
+				m_scenes[i].ptr->draw(dummyCtx);
+			}
+			ctx.window.setView(ctx.window.getDefaultView());
 		}
+	}
+
+	inline void SceneStack::setOnChangeCallback(std::function<void()> callback)
+	{
+		m_onChangeCallback = callback;
 	}
 }

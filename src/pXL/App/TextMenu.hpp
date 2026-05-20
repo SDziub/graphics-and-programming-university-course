@@ -7,7 +7,6 @@
 
 #include <SFML/Graphics.hpp>
 
-#include "ApiDraw.hpp"
 #include "pXL/Resources/Assets.hpp"
 
 namespace px
@@ -17,7 +16,7 @@ namespace px
 	public:
 
 		using ButtonAction = std::function<void()>;
-
+		
 		TextMenu(sf::Vector2f position) : m_position(position) {}
 
 		void addButton(const std::string& name, ButtonAction&& action)
@@ -29,7 +28,7 @@ namespace px
 		void moveUp() { m_current = (m_current - 1 + m_buttons.size()) % m_buttons.size(); }
 		void moveDown() { m_current = (m_current + 1) % m_buttons.size(); }
 
-		void draw(const ApiDraw& api) const
+		void draw(const DrawCtx& api) const
 		{
 			size_t labels = m_buttons.size();
 			sf::Vector2f position = m_position;

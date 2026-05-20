@@ -1,44 +1,89 @@
 #pragma once
 
 #include <optional>
-
-#include "Internal.hpp"
-#include "ApiDraw.hpp"
-#include "ApiScene.hpp"
-#include "ApiUpdate.hpp"
+#include <any>
 
 namespace sf
 {
-	class RenderWindow;
+	class RenderTarget;
+	class Window;
 }
 
 namespace px
 {
-	template <Internal I>
+	class InputRaw;
+	class Assets;
+	class SceneCommands;
+	class SceneConfig;
+	class Transition;
+	class Mapping;
+
+	struct EngineApi
+	{
+		SceneCommands& comms;
+		const Assets& assets;
+		const Mapping& mapping;
+		const float& unit;
+	};
+
+	class Scene;
+	class Client;
+
+	class SceneInitCtx
+	{
+	public:
+
+		SceneInitCtx(SceneConfig& properties, Transition& transition, EngineApi api) :
+			properties(properties),
+			transition(transition),
+			api(api)
+		{}
+
+		SceneConfig& properties;
+		Transition& transition;
+
+	private:
+
+		EngineApi api;
+
+		friend Scene;
+		friend Client;
+	};
+
+	struct UpdateCtx
+	{
+		const sf::Window& window;
+		const sf::Time dt;
+		Transition& transition;
+	};
+
+	struct DrawCtx
+	{
+		sf::RenderTarget& window;
+		const Assets& assets;
+		float alpha{};
+	};
+
 	class SceneStack;
 
-	// Add input and visual passthrough
-
-	template <Internal I>
 	class Scene
 	{
 	public:
 
-		Scene(const ApiScene<I>& api, typename I::Context& ctx) : scene(api), ctx(ctx) {}
+		Scene(const SceneInitCtx& ctx) : api(ctx.api) {}
 		virtual ~Scene() = default;
 
-		virtual void onEnter(const I::ScenePayload* payload) {}
-		virtual void update(ApiUpdate& api) {}
-		virtual void fixedUpdate(ApiUpdate& api) {}
-		virtual void draw(ApiDraw& api) const = 0;
+		virtual void onEnter(std::any&& payload) {}
+		virtual void update(UpdateCtx& ctx) {}
+		virtual void fixedUpdate(UpdateCtx& ctx) {}
+		virtual void draw(DrawCtx& ctx) const = 0;
 
 	protected:
 
-		ApiScene<I> scene;
-		typename I::Context& ctx;
+		EngineApi api;
 
 	private:
 
-		friend SceneStack<I>;
+		friend SceneStack;
 	};
 }

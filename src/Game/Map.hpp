@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
+#include <unordered_map>
 
 #include "pXL/pXL.hpp"
 
@@ -23,3 +25,6 @@ inline uint8_t getAdjacent(const Map& map, const sf::Vector2u position)
 
 	return adjacent;
 }
+
+void saveMap(const std::filesystem::path& path, const Map& map);
+Map loadMap(const std::filesystem::path& path, const std::unordered_map<std::string, Tile>&);

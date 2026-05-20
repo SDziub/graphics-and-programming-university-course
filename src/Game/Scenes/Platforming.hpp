@@ -1,39 +1,44 @@
 #pragma once
 
-#include "Game/Types.hpp"
+#include <entt/entt.hpp>
+
+#include "pXL/pXL.hpp"
+
+#include "Game/Context.hpp"
+#include "Game/Tile.hpp"
 #include "Game/Map.hpp"
+#include "Game/Components.hpp"
 
 namespace Scenes
 {
-	class Platforming : public Scene
+	class Platforming : public px::Scene
 	{
 	public:
 
-		Platforming(ApiScene& api, Context& ctx);
+		Platforming(px::SceneInitCtx& ctx, Context& gctx);
 
-		void update(px::ApiUpdate& api) override;
-		void draw(px::ApiDraw& api) const override;
+		void update(px::UpdateCtx& ctx) override;
+		void fixedUpdate(px::UpdateCtx& ctx) override;
+		void draw(px::DrawCtx& ctx) const override;
 
 	private:
 
-		void playerControlSystem(px::ApiUpdate& api);
-		void movementAndColisionSystem(px::ApiUpdate& api);
+		void playerControlSystem(px::UpdateCtx& api);
+		void movementAndColisionSystem(px::UpdateCtx& api);
 
-		// This mutable is a bandaid fix, the manager needs a const view and const functions
-		mutable EntityManager m_entities;
+		Context& m_ctx;
+
+		entt::registry m_registry;
 
 		sf::Time m_elapsed;
 
 		Map m_map;
 
+		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
+
+		std::optional<sf::Time> m_jumpBuffer;
+		sf::Time m_floor;
+
 		int32_t m_dir{ 1 };
-
-		enum class Action : uint8_t
-		{
-			Jump, Left, Right
-		};
-		static constexpr uint8_t k_actions = static_cast<uint8_t>(Action::Right) + 1;
-
-		px::InputMapping<Action, k_actions> m_input;
 	};
 }
