@@ -78,6 +78,12 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		stationary.position = { 6.f, 6.f };
 	}
 
+	{
+		auto platform = m_ctx.entities.get("cloud").spawn(m_registry);
+		auto& stationary = m_registry.get<Stationary>(platform);
+		stationary.position = { 5.f, 6.f };
+	}
+
 	auto retractableSpike = m_ctx.entities.get("retractable_spike").spawn(m_registry);
 
 	{
@@ -95,6 +101,52 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	}
 }
 
+void Scenes::Platforming::restart(px::UpdateCtx& ctx)
+{
+	if (m_restarting)
+	{
+		return;
+	}
+
+	m_restarting = true;
+	ctx.transition.start([&]()
+	{
+		api.comms.replace("Platforming");
+	});
+}
+
+void Scenes::Platforming::crumble(px::UpdateCtx& ctx)
+{
+	auto view = m_registry.view<Crumbling>();
+
+	view.each([&](auto& crumbling)
+	{
+		if (!crumbling.active)
+		{
+			return;
+		}
+
+		crumbling.accumulated += ctx.dt;
+
+		if (crumbling.accumulated <= crumbling.onTime)
+		{
+			return;
+		}
+
+		const auto fullCycle = crumbling.onTime + crumbling.offTime;
+		if (crumbling.accumulated > fullCycle)
+		{
+			crumbling.active = false;
+			crumbling.isAir = false;
+			crumbling.accumulated = sf::Time::Zero;
+
+			return;
+		}
+
+		crumbling.isAir = true;
+	});
+}
+
 void Scenes::Platforming::update(px::UpdateCtx& ctx)
 {
 	m_elapsed += ctx.dt;
@@ -109,6 +161,8 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
+	crumble(ctx);
+
 	computeLifetime(ctx);
 
 	for (auto& device : m_devices)
@@ -212,6 +266,13 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 				return;
 			}
 		}
+		else if (const auto* crumbling = m_registry.try_get<Crumbling>(entity))
+		{
+			if (crumbling->isAir)
+			{
+				return;
+			}
+		}
 
 		if (const auto* transform = m_registry.try_get<Transform>(entity))
 		{
@@ -270,8 +331,22 @@ void Scenes::Platforming::animate(px::UpdateCtx& ctx)
 	});
 
 	auto toggleView = m_registry.view<const Toggle, px::Animation>();
-	toggleView.each([&](const auto& toggle, auto& animation) {
+	toggleView.each([&](const auto& toggle, auto& animation)
+	{
 		if (toggle.active)
+		{
+			animation.play("active");
+		}
+		else
+		{
+			animation.play("inactive");
+		}
+	});
+
+	auto crumblingView = m_registry.view<const Crumbling, px::Animation>();
+	crumblingView.each([&](const auto& crumbling, auto& animation)
+	{
+		if (!crumbling.isAir)
 		{
 			animation.play("active");
 		}
@@ -312,11 +387,6 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		}
 
 		controllable.cayoteTime += ctx.dt;
-
-		sf::Vector2 bottomLeft = transform.pos + hitbox.rect.position;
-		bottomLeft.y += hitbox.rect.size.y;
-		sf::Vector2f bottomRight = bottomLeft;
-		bottomRight.x += hitbox.rect.size.x;
 
 		if (!controllable.wasGrounded && controllable.grounded && transform.pos.y > transform.jumpStartY - 1e-3)
 		{
@@ -473,29 +543,31 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				continue;
 			}
 
-			ColiderType type = colider.entity ? m_registry.get<Hitbox>(colider.entity.value()).type : ColiderType::Solid;
-			auto* toggle = colider.entity ? m_registry.try_get<Toggle>(colider.entity.value()) : nullptr;
+			ColiderType type = colider.entity ? m_registry.get<Hitbox>(*colider.entity).type : ColiderType::Solid;
+			auto* toggle = colider.entity ? m_registry.try_get<Toggle>(*colider.entity) : nullptr;
+			auto* crumbling = colider.entity ? m_registry.try_get<Crumbling>(*colider.entity) : nullptr;
 
-			bool goodAngle = (type == ColiderType::Platform && result.normal == sf::Vector2f{ 0.f,-1.f }) || type != ColiderType::Platform;
-			bool active = !toggle || toggle->active;
-			bool resolve = goodAngle && active;
+			const bool onTop = result.normal.y < 0.f;
+			const bool rightAngle = (type != ColiderType::Platform || (type == ColiderType::Platform && onTop));
+			const bool toggled = !toggle || toggle->active;
+			const bool crumbled = crumbling && crumbling->isAir;
+			const bool resolve = rightAngle && toggled && !crumbled;
 
-			if (resolve)
+			if (!resolve)
 			{
-				transform.vel += sf::Vector2f{
-					result.normal.x * std::abs(transform.vel.x),
-					result.normal.y * std::abs(transform.vel.y)
-				} *(1.0f - result.time);
-
-				deltaDistance = transform.vel * ctx.dt.asSeconds();
+				continue;
 			}
 
-			if (type == ColiderType::Hazard && resolve && !ctx.transition.isActive())
+			transform.vel += sf::Vector2f{
+					result.normal.x * std::abs(transform.vel.x),
+					result.normal.y * std::abs(transform.vel.y)
+			} *(1.0f - result.time);
+
+			deltaDistance = transform.vel * ctx.dt.asSeconds();
+
+			if (type == ColiderType::Hazard)
 			{
-				ctx.transition.start([&]()
-				{
-					api.comms.replace("Platforming");
-				});
+				restart(ctx);
 			}
 
 			if (auto* controllable = m_registry.try_get<Controllable>(entity))
@@ -504,6 +576,16 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				{
 					controllable->grounded = true;
 				}
+			}
+
+			if (!colider.entity)
+			{
+				continue;
+			}
+
+			if (auto * crumbling = m_registry.try_get<Crumbling>(*colider.entity))
+			{
+				crumbling->active = true;
 			}
 		}
 
@@ -514,12 +596,7 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 			auto colider = innerHitbox.rect;
 			colider.position += innerStationary.position;
 
-			bool aabb = colider.position.x <= entityRect.position.x + entityRect.size.x
-				&& colider.position.y <= entityRect.position.y + entityRect.size.y
-				&& colider.position.x + colider.size.x >= entityRect.position.x
-				&& colider.position.y + colider.size.y >= entityRect.position.y;
-
-			if (!aabb)
+			if (!px::colideAABB(colider, entityRect))
 			{
 				return;
 			}
@@ -531,12 +608,9 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				active = toggle->active;
 			}
 
-			if (active && innerHitbox.type == ColiderType::Hazard && !ctx.transition.isActive())
+			if (active && innerHitbox.type != ColiderType::Platform)
 			{
-				ctx.transition.start([&]()
-				{
-					api.comms.replace("Platforming");
-				});
+				restart(ctx);
 			}
 		});
 

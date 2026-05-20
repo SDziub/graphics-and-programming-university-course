@@ -173,6 +173,13 @@ void Game::initPrefabGenerators()
 		prefab.emplace<Stationary>();
 		prefab.emplace<Hitbox>(sf::FloatRect{ {0.f, 0.f}, {1.f, 0.2f} }, ColiderType::Platform);
 		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
+		if (obj.contains("crumbling") && obj["crumbling"] == true)
+		{
+			Crumbling crumbling;
+			crumbling.onTime = sf::seconds(1);
+			crumbling.offTime = sf::seconds(5);
+			prefab.emplace<Crumbling>(crumbling);
+		}
 		return prefab;
 	});
 

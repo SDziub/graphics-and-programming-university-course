@@ -79,35 +79,19 @@ struct Toggle
 	bool active{};
 };
 
-// AS is short for Animated State
-
-struct ASDynamic
+struct Crumbling
 {
-	Facing facing{};
-	enum State : uint8_t
-	{
-		Grounded,
-		Jumping,
-		Falling
-	}state{};
+	bool active{};
+	bool isAir{};
+	sf::Time onTime, offTime, accumulated;
 };
 
-struct ASTriger
-{
-	bool active;
-};
+// AT is short for Animation Tag
 
-struct ASToggle
-{
-	bool active;
-};
+struct ATDynamic{};
 
-struct ASDecoration
-{
+struct ATTrigger{};
 
-};
+struct ATToggle{};
 
-struct ASTile
-{
-
-};
+struct ATCrumbling{};
