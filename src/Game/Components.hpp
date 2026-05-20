@@ -48,6 +48,7 @@ struct Controllable
 	sf::Time jumpBuffer{};
 	bool canJump{};
 	bool grounded{};
+	bool wasGrounded{};
 };
 
 struct Lifetime

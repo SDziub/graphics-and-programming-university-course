@@ -229,11 +229,7 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		sf::Vector2f bottomRight = bottomLeft;
 		bottomRight.x += hitbox.rect.size.x;
 
-		bool wasGrounded = controllable.grounded;
-		controllable.grounded = raycast(m_map, bottomLeft, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid ||
-			raycast(m_map, bottomRight, { 0, 1.0f }, 1e-6).type == Tile::Type::Solid;
-
-		if (!wasGrounded && controllable.grounded && transform.pos.y > transform.jumpStartY - 1e-3)
+		if (!controllable.wasGrounded && controllable.grounded && transform.pos.y > transform.jumpStartY - 1e-3)
 		{
 			for (size_t i = 0; i < 10; ++i)
 			{
@@ -320,6 +316,12 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 			return;
 		}
 
+		if (auto* controllable = m_registry.try_get<Controllable>(entity))
+		{
+			controllable->wasGrounded = controllable->grounded;
+			controllable->grounded = false;
+		}
+
 		transform.oldPos = transform.pos;
 
 		sf::FloatRect entityRect = hitbox.rect;
@@ -404,6 +406,14 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				{
 					api.comms.replace("Platforming");
 				});
+			}
+
+			if (auto* controllable = m_registry.try_get<Controllable>(entity))
+			{
+				if (result.normal.y < 0.f)
+				{
+					controllable->grounded = true;
+				}
 			}
 		}
 
