@@ -38,7 +38,5 @@ namespace Scenes
 		Map m_map;
 
 		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
-
-		int32_t m_dir{ 1 };
 	};
 }
