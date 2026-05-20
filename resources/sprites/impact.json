@@ -1,0 +1,18 @@
+{
+  "grid": [ 4, 1 ],
+  "default": "_",
+  "texture": "impact",
+  "origin": [ 8, 16 ],
+  "clips": {
+    "_": {
+      "type": "looped",
+      "frames": [
+        [ 0, 0 ],
+        [ 1, 0 ],
+        [ 2, 0 ],
+        [ 3, 0 ]
+      ],
+      "duration": 0.1
+    }
+  }
+}

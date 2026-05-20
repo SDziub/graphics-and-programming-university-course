@@ -95,3 +95,5 @@ struct ATTrigger{};
 struct ATToggle{};
 
 struct ATCrumbling{};
+
+struct ATParticle{};

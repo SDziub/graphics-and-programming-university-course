@@ -220,7 +220,10 @@ namespace px
 
 	inline void SceneStack::onEvent(const sf::Event& event)
 	{
-		assert(!m_scenes.empty() && "Can't run onEvent() a scene if the scene stack is empty");
+		if (m_scenes.empty() || !m_scenes.back().ptr)
+		{
+			return;
+		}
 
 		m_scenes.back().ptr->onEvent(event);
 	}

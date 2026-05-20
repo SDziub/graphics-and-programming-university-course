@@ -77,6 +77,8 @@ namespace px
 
 	private:
 
+		void eventLoop();
+
 		static constexpr uint32_t k_tps{ 60 };
 		static constexpr sf::Time k_fixedDt = sf::microseconds(1000000 / k_tps);
 	};
@@ -102,6 +104,26 @@ namespace px
 		ImGui::SFML::Shutdown();
 	}
 
+	inline void Engine::eventLoop()
+	{
+		while (const auto event = window.pollEvent())
+		{
+			frameInput.readEvent(*event);
+			tickInput.readEvent(*event);
+
+			ImGui::SFML::ProcessEvent(window, *event);
+
+			onEvent(*event);
+
+			scenes.onEvent(*event);
+
+			if (event->is<sf::Event::Closed>())
+			{
+				window.close();
+			}
+		}
+	}
+
 	inline void Engine::run()
 	{
 		sf::Clock clock;
@@ -115,22 +137,7 @@ namespace px
 
 			frameInput.newUpdate();
 
-			while (const auto event = window.pollEvent())
-			{
-				frameInput.readEvent(*event);
-				tickInput.readEvent(*event);
-
-				ImGui::SFML::ProcessEvent(window, *event);
-
-				onEvent(*event);
-
-				scenes.onEvent(*event);
-
-				if (event->is<sf::Event::Closed>())
-				{
-					window.close();
-				}
-			}
+			eventLoop();
 
 			scaling.update();
 
@@ -217,6 +224,8 @@ namespace px
 			std::string name = std::filesystem::relative(entry.path(), directoryPath).replace_extension().generic_string();
 
 			call(entry.path(), name);
+
+			eventLoop();
 		}
 	}
 }

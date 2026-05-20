@@ -193,7 +193,7 @@ void Game::initPrefabGenerators()
 		if (obj.contains("crumbling") && obj["crumbling"] == true)
 		{
 			Crumbling crumbling;
-			crumbling.onTime = sf::seconds(1);
+			crumbling.onTime = sf::milliseconds(500);
 			crumbling.offTime = sf::seconds(5);
 			prefab.emplace<Crumbling>(crumbling);
 		}
@@ -207,6 +207,17 @@ void Game::initPrefabGenerators()
 		prefab.emplace<Hitbox>(sf::FloatRect{ {-.25f, -.75f}, {.5f, .75f} }, ColiderType::Physics);
 		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
 		prefab.emplace<Controllable>();
+		return prefab;
+	});
+
+	m_prefabGenerators.emplace("particle", [&](const auto& obj)
+	{
+		EntityPrefab prefab;
+		prefab.emplace<Transform>();
+		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
+		Lifetime lifetime;
+		lifetime.max = sf::seconds(obj["lifetime"]);
+		prefab.emplace<Lifetime>(lifetime);
 		return prefab;
 	});
 }

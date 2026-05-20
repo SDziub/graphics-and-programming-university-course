@@ -168,6 +168,17 @@ void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 
 	crumble(ctx);
 
+	auto view = m_registry.view<Lifetime>();
+	view.each([&](entt::entity entity, Lifetime& lifetime)
+	{
+		lifetime.lived += ctx.dt;
+
+		if (lifetime.lived > lifetime.max)
+		{
+			m_registry.destroy(entity);
+		}
+	});
+
 	for (auto& device : m_devices)
 	{
 		switch (device.type)
@@ -381,6 +392,11 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		if (!controllable.wasGrounded && controllable.grounded)
 		{
 			m_landing.play();
+
+			auto impact = m_ctx.entities.get("impact").spawn(m_registry);
+			auto& impactTransform = m_registry.get<Transform>(impact);
+			impactTransform.pos = transform.pos;
+			impactTransform.oldPos = impactTransform.pos;
 		}
 		
 		if (controllable.grounded)
@@ -395,6 +411,11 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 			controllable.canJump = false;
 
 			m_jump.play();
+
+			auto impact = m_ctx.entities.get("impact").spawn(m_registry);
+			auto& impactTransform = m_registry.get<Transform>(impact);
+			impactTransform.pos = transform.pos;
+			impactTransform.oldPos = impactTransform.pos;
 		}
 		else if (transform.vel.y < 0.0f)
 		{
