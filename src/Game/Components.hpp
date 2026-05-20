@@ -34,7 +34,7 @@ struct Transform
 	sf::Vector2f vel{};
 	sf::Vector2f oldPos{};
 	float jumpStartY{};
-	int8_t facing{};
+	int8_t facing{ Facing::Right };
 };
 
 struct Stationary

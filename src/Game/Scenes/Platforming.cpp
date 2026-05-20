@@ -77,6 +77,22 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		auto& stationary = m_registry.get<Stationary>(platform);
 		stationary.position = { 6.f, 6.f };
 	}
+
+	auto retractableSpike = m_ctx.entities.get("retractable_spike").spawn(m_registry);
+
+	{
+		auto& stationary = m_registry.get<Stationary>(retractableSpike);
+		stationary.position = { 7.f, 7.f };
+	}
+
+	{
+		Device device;
+		device.type = DeviceType::Timed;
+		device.onTime = sf::seconds(5);
+		device.offTime = sf::seconds(5);
+		device.out.push_back({ retractableSpike });
+		m_devices.push_back(std::move(device));
+	}
 }
 
 void Scenes::Platforming::update(px::UpdateCtx& ctx)
@@ -94,6 +110,27 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
 	computeLifetime(ctx);
+
+	for (auto& device : m_devices)
+	{
+		switch (device.type)
+		{
+		case DeviceType::Timed:
+			
+			bool state = device.accumulated % (device.onTime + device.offTime) <= device.onTime;
+
+			for (auto& out : device.out)
+			{
+				if (auto* toggle = m_registry.try_get<Toggle>(out.entity))
+				{
+					toggle->active = out.inverted ? !state : state;
+				}
+			}
+
+			device.accumulated += ctx.dt;
+			break;
+		}
+	}
 
 	playerControlSystem(ctx);
 
@@ -167,6 +204,15 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 	hitboxView.each([&](entt::entity entity, const Hitbox& hitbox)
 	{
 		sf::Vector2f worldPosition{};
+
+		if (const auto* toggle = m_registry.try_get<Toggle>(entity))
+		{
+			if (!toggle->active)
+			{
+				return;
+			}
+		}
+
 		if (const auto* transform = m_registry.try_get<Transform>(entity))
 		{
 			worldPosition = px::lerp(transform->oldPos, transform->pos, ctx.alpha) + hitbox.rect.position;
@@ -221,6 +267,18 @@ void Scenes::Platforming::animate(px::UpdateCtx& ctx)
 			return;
 		}
 		animation.play("run");
+	});
+
+	auto toggleView = m_registry.view<const Toggle, px::Animation>();
+	toggleView.each([&](const auto& toggle, auto& animation) {
+		if (toggle.active)
+		{
+			animation.play("active");
+		}
+		else
+		{
+			animation.play("inactive");
+		}
 	});
 }
 
@@ -432,7 +490,7 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				deltaDistance = transform.vel * ctx.dt.asSeconds();
 			}
 
-			if (type == ColiderType::Hazard && !ctx.transition.isActive())
+			if (type == ColiderType::Hazard && resolve && !ctx.transition.isActive())
 			{
 				ctx.transition.start([&]()
 				{
@@ -450,6 +508,37 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 		}
 
 		transform.pos += transform.vel * ctx.dt.asSeconds();
+
+		stationaryView.each([&](entt::entity innerEntity, const Stationary& innerStationary, const Hitbox& innerHitbox)
+		{
+			auto colider = innerHitbox.rect;
+			colider.position += innerStationary.position;
+
+			bool aabb = colider.position.x <= entityRect.position.x + entityRect.size.x
+				&& colider.position.y <= entityRect.position.y + entityRect.size.y
+				&& colider.position.x + colider.size.x >= entityRect.position.x
+				&& colider.position.y + colider.size.y >= entityRect.position.y;
+
+			if (!aabb)
+			{
+				return;
+			}
+
+			bool active = true;
+
+			if (const auto* toggle = m_registry.try_get<Toggle>(innerEntity))
+			{
+				active = toggle->active;
+			}
+
+			if (active && innerHitbox.type == ColiderType::Hazard && !ctx.transition.isActive())
+			{
+				ctx.transition.start([&]()
+				{
+					api.comms.replace("Platforming");
+				});
+			}
+		});
 
 		if (m_registry.all_of<Controllable>(entity))
 		{

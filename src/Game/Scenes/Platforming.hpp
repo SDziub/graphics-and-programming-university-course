@@ -8,6 +8,7 @@
 #include "Game/Tile.hpp"
 #include "Game/Map.hpp"
 #include "Game/Components.hpp"
+#include "Game/Device.hpp"
 
 namespace Scenes
 {
@@ -36,6 +37,8 @@ namespace Scenes
 		sf::Time m_elapsed;
 
 		Map m_map;
+
+		std::vector<Device> m_devices;
 
 		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
 	};

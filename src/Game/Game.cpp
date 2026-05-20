@@ -160,6 +160,10 @@ void Game::initPrefabGenerators()
 		prefab.emplace<Stationary>();
 		prefab.emplace<Hitbox>(sf::FloatRect{ {0.25f, 0.25f}, {0.5f, 0.5f} }, ColiderType::Hazard);
 		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
+		if (obj.contains("toggle") && obj["toggle"] == true)
+		{
+			prefab.emplace<Toggle>();
+		}
 		return prefab;
 	});
 
