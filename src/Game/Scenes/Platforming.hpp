@@ -26,10 +26,8 @@ namespace Scenes
 
 		void animate(px::UpdateCtx& ctx);
 		void crumble(px::UpdateCtx& ctx);
-		void computeLifetime(px::UpdateCtx ctx);
 		void playerControlSystem(px::UpdateCtx& ctx);
 		void movementAndColisionSystem(px::UpdateCtx& ctx);
-		void updateAnimationStates(px::UpdateCtx& ctx);
 
 		void restart(px::UpdateCtx& ctx);
 
@@ -45,6 +43,9 @@ namespace Scenes
 
 		sf::Vector2f m_cameraPosition, m_oldCameraPosition;
 
-		bool m_restarting;
+		bool m_restarting{};
+
+		sf::Sound m_jump, m_landing, m_step;
+		sf::Time m_timeSinceLastStep;
 	};
 }

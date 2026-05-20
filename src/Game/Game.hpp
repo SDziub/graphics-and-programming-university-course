@@ -7,6 +7,7 @@
 
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
+#include <SFML/Audio.hpp>
 
 #include "pXL/pXL.hpp"
 
@@ -28,4 +29,6 @@ private:
 
 	Context m_ctx;
 	std::unordered_map<std::string, PrefabGenerator> m_prefabGenerators;
+
+	sf::Music m_music;
 };

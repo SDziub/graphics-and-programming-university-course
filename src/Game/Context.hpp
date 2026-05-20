@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 
+#include <SFML/Audio.hpp>
+
 #include "pXL/pXL.hpp"
 
 #include "Tile.hpp"
@@ -11,6 +13,7 @@ struct Context
 {
 	px::Registry<EntityPrefab> entities;
 	std::unordered_map<std::string, Tile> tiles;
+	std::unordered_map<std::string, sf::SoundBuffer> sounds;
 
 	std::vector<std::string> maps = {
 			"./resources/maps/1.json",

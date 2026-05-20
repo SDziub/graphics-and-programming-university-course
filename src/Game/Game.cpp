@@ -11,6 +11,10 @@ Game::Game()
 {
 	initPrefabGenerators();
 
+	m_music.openFromFile("resources/Etirwer (Looped).ogg");
+	m_music.setLooping(true);
+	m_music.play();
+
 	recursiveLoad("resources/textures", [&](const auto& path, const auto& name)
 	{
 		sf::Texture texture;
@@ -23,6 +27,19 @@ Game::Game()
 		assets.textures.set(name, std::move(texture));
 
 		SPDLOG_INFO("Texture loaded: {}", name);
+	});
+
+	recursiveLoad("resources/sounds", [&](const auto& path, const auto& name)
+	{
+		sf::SoundBuffer sound;
+		if (!sound.loadFromFile(path))
+			{
+			return;
+		}
+
+		m_ctx.sounds.insert({ name, std::move(sound) });
+
+		SPDLOG_INFO("Sound loaded: {}", name);
 	});
 
 	scenes.registerScene("MainMenu", [&]() { return std::make_unique<Scenes::MainMenu>(apiScene, window); });

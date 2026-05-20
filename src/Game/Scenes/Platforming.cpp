@@ -11,7 +11,10 @@
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
 	m_ctx(gctx),
-	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"])
+	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"]),
+	m_jump(m_ctx.sounds.at("jump")),
+	m_landing(m_ctx.sounds.at("landing")),
+	m_step(m_ctx.sounds.at("step"))
 {
 	const char* mapBuilder[]{
 		"########################################",
@@ -161,9 +164,9 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 
 void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 {
-	crumble(ctx);
+	m_timeSinceLastStep += ctx.dt;
 
-	computeLifetime(ctx);
+	crumble(ctx);
 
 	for (auto& device : m_devices)
 	{
@@ -253,7 +256,7 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		ctx.window.draw(sprite);
 	});
 
-	auto hitboxView = m_registry.view<const Hitbox>();
+	/*auto hitboxView = m_registry.view<const Hitbox>();
 
 	hitboxView.each([&](entt::entity entity, const Hitbox& hitbox)
 	{
@@ -293,7 +296,7 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		hitboxRectangle.setFillColor(sf::Color(255, 0, 0, 150));
 
 		ctx.window.draw(hitboxRectangle);
-	});
+	});*/
 }
 
 void Scenes::Platforming::animate(px::UpdateCtx& ctx)
@@ -357,19 +360,6 @@ void Scenes::Platforming::animate(px::UpdateCtx& ctx)
 	});
 }
 
-void Scenes::Platforming::computeLifetime(px::UpdateCtx ctx)
-{
-	auto view = m_registry.view<Lifetime>();
-
-	view.each([&](entt::entity entity, auto& lifetime) {
-		lifetime.lived += ctx.dt;
-		if (lifetime.lived > lifetime.max)
-		{
-			m_registry.destroy(entity);
-		}
-	});
-}
-
 void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 {
 	auto view = m_registry.view<Controllable, Transform, const Hitbox>();
@@ -388,21 +378,9 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 
 		controllable.cayoteTime += ctx.dt;
 
-		if (!controllable.wasGrounded && controllable.grounded && transform.pos.y > transform.jumpStartY - 1e-3)
+		if (!controllable.wasGrounded && controllable.grounded)
 		{
-			for (size_t i = 0; i < 10; ++i)
-			{
-				auto particle = m_ctx.entities.get("cloud_particle").spawn(m_registry);
-				auto& particleTransform = m_registry.get<Transform>(particle);
-
-				particleTransform.pos = transform.pos;
-				particleTransform.oldPos = transform.pos;
-
-				float angle = static_cast<float>(rand()) / RAND_MAX * 2.f * M_PI;
-				sf::Vector2f direction(cosf(angle), sinf(angle));
-
-				particleTransform.vel = direction * 1.5f;
-			}
+			m_landing.play();
 		}
 		
 		if (controllable.grounded)
@@ -415,6 +393,8 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		{
 			transform.vel.y = -k_jumpVelocity;
 			controllable.canJump = false;
+
+			m_jump.play();
 		}
 		else if (transform.vel.y < 0.0f)
 		{
@@ -443,6 +423,12 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 
 			transform.vel.x = (transform.vel.x > 0.0f ? 1.0f : -1.0f) * newVelocity;
 			return;
+		}
+
+		if (m_timeSinceLastStep > sf::milliseconds(400) && controllable.grounded)
+		{
+			m_step.play();
+			m_timeSinceLastStep = sf::Time::Zero;
 		}
 
 		if (std::abs(transform.vel.x) > k_maxSpeed)
