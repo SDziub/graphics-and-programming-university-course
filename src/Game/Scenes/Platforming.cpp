@@ -279,7 +279,7 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		position.x = std::max(position.x, halfScreenTiles.x);
 		position.y = std::max(position.y, halfScreenTiles.y);
 
-		ctx.window.draw(px::Background(api.assets.backgrounds.get("background"), position.x * unitPixels));
+		ctx.window.draw(px::Background(api.assets.backgrounds.get("background"), position.x * unitPixels, m_elapsed));
 
 		sf::View view(
 			position * static_cast<float>(unitPixels),

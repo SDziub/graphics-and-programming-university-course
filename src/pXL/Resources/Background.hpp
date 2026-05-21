@@ -8,17 +8,24 @@ namespace px
 {
 	class Background;
 
+	struct BackgroundLayer
+	{
+		const sf::Texture& texture;
+		float speed;
+		float movePerSecond;
+	};
+
 	class BackgroundData
 	{
 	public:
 
-		BackgroundData(std::vector<std::pair<const sf::Texture&, float>>&& textures) :
+		BackgroundData(std::vector<BackgroundLayer>&& textures) :
 			m_textures(std::move(textures))
 		{}
 
 	private:
 
-		std::vector<std::pair<const sf::Texture&, float>> m_textures;
+		std::vector<BackgroundLayer> m_textures;
 
 		friend Background;
 	};
@@ -27,23 +34,24 @@ namespace px
 	{
 	public:
 
-		Background(const BackgroundData& data, const float xPosition) : 
+		Background(const BackgroundData& data, const float xPosition, sf::Time elapsed = sf::Time::Zero) : 
 			m_data(data),
-			m_xPosition(xPosition)
+			m_xPosition(xPosition),
+			m_elapsed(elapsed)
 		{}
 
 	private:
 
 		void draw(sf::RenderTarget& target, sf::RenderStates states) const override
 		{
-			for (const auto& [texture, offset] : m_data.m_textures)
+			for (const auto& [texture, offset, move] : m_data.m_textures)
 			{
 				const auto texSize = static_cast<sf::Vector2f>(texture.getSize());
 				const float scale = static_cast<float>(target.getSize().y) / texSize.y;
 				const float width = texSize.x * scale;
 				const float height = texSize.y * scale;
 
-				const float textureOffsetX = (m_xPosition / scale) * offset;
+				const float textureOffsetX = ((m_xPosition / scale) * offset) + move * scale * m_elapsed.asSeconds();
 
 				sf::VertexArray quad(sf::PrimitiveType::TriangleStrip, 4);
 
@@ -66,6 +74,7 @@ namespace px
 
 		const BackgroundData& m_data;
 		float m_xPosition;
+		sf::Time m_elapsed;
 
 		friend sf::RenderTarget;
 	};

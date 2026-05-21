@@ -88,10 +88,10 @@ Game::Game()
 	px::BackgroundData background(
 		{
 			{ assets.textures.get("background/0"), 0.03125f },
-			{ assets.textures.get("background/1"), 0.0625f },
+			{ assets.textures.get("background/1"), 0.0625f, -.12f },
 			{ assets.textures.get("background/2"), 0.125f },
 			{ assets.textures.get("background/4"), 0.25f },
-			{ assets.textures.get("background/3"), 0.5f },
+			{ assets.textures.get("background/3"), 0.5f, -1.f },
 			{ assets.textures.get("background/5"), 1.0f }
 		}
 	);
