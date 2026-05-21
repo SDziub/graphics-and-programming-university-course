@@ -93,11 +93,31 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		stationary.position = { 16.f, 7.f };
 	}
 
+	{
+		auto platform = m_ctx.entities.get("fungi").spawn(m_registry);
+		auto& stationary = m_registry.get<Stationary>(platform);
+		stationary.position = { 19.f, 18.f };
+	}
+
 	auto retractableSpike = m_ctx.entities.get("retractable_spike").spawn(m_registry);
 
 	{
 		auto& stationary = m_registry.get<Stationary>(retractableSpike);
 		stationary.position = { 7.f, 7.f };
+	}
+
+	auto toggleBlock = m_ctx.entities.get("toggle_block").spawn(m_registry);
+
+	{
+		auto& stationary = m_registry.get<Stationary>(toggleBlock);
+		stationary.position = { 9.f, 16.f };
+	}
+
+	auto button = m_ctx.entities.get("button").spawn(m_registry);
+
+	{
+		auto& stationary = m_registry.get<Stationary>(button);
+		stationary.position = { 8.f, 18.f };
 	}
 
 	{
@@ -106,6 +126,14 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		device.onTime = sf::seconds(5);
 		device.offTime = sf::seconds(5);
 		device.out.push_back({ retractableSpike });
+		m_devices.push_back(std::move(device));
+	}
+
+	{
+		Device device;
+		device.type = DeviceType::And;
+		device.in.push_back({ button });
+		device.out.push_back({ toggleBlock });
 		m_devices.push_back(std::move(device));
 	}
 }
@@ -190,19 +218,42 @@ void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 		switch (device.type)
 		{
 		case DeviceType::Timed:
-			
-			bool state = device.accumulated % (device.onTime + device.offTime) <= device.onTime;
-
-			for (auto& out : device.out)
 			{
-				if (auto* toggle = m_registry.try_get<Toggle>(out.entity))
-				{
-					toggle->active = out.inverted ? !state : state;
-				}
-			}
+				bool state = device.accumulated % (device.onTime + device.offTime) <= device.onTime;
 
-			device.accumulated += ctx.dt;
-			break;
+				for (auto& out : device.out)
+				{
+					if (auto* toggle = m_registry.try_get<Toggle>(out.entity))
+					{
+						toggle->active = out.inverted ? !state : state;
+					}
+				}
+
+				device.accumulated += ctx.dt;
+				break;
+			}
+		case DeviceType::And:
+			{
+				bool state = std::all_of(device.in.begin(), device.in.end(), [&](const auto& in)
+					{
+						if (const auto* trigger = m_registry.try_get<Trigger>(in.entity))
+						{
+							return in.inverted ? !trigger->active : trigger->active;
+						}
+
+						return false;
+					});
+
+				for (auto& out : device.out)
+				{
+					if (auto* toggle = m_registry.try_get<Toggle>(out.entity))
+					{
+						toggle->active = out.inverted ? !state : state;
+					}
+				}
+
+				break;
+			}
 		}
 	}
 
@@ -375,6 +426,20 @@ void Scenes::Platforming::animate(px::UpdateCtx& ctx)
 			animation.play("inactive");
 		}
 	});
+
+	auto triggerView = m_registry.view<const Trigger, px::Animation>();
+
+	triggerView.each([&](const auto& trigger, auto& animation)
+	{
+		if (trigger.active)
+		{
+			animation.play("active");
+		}
+		else
+		{
+			animation.play("inactive");
+		}
+	});
 }
 
 void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
@@ -398,11 +463,6 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		if (!controllable.wasGrounded && controllable.grounded)
 		{
 			m_landing.play();
-
-			auto impact = m_ctx.entities.get("impact").spawn(m_registry);
-			auto& impactTransform = m_registry.get<Transform>(impact);
-			impactTransform.pos = transform.pos;
-			impactTransform.oldPos = impactTransform.pos;
 		}
 		
 		if (controllable.grounded)
@@ -417,11 +477,6 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 			controllable.canJump = false;
 
 			m_jump.play();
-
-			auto impact = m_ctx.entities.get("impact").spawn(m_registry);
-			auto& impactTransform = m_registry.get<Transform>(impact);
-			impactTransform.pos = transform.pos;
-			impactTransform.oldPos = impactTransform.pos;
 		}
 		else if (transform.vel.y < 0.0f)
 		{
@@ -564,7 +619,7 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 			const bool rightAngle = (type != ColiderType::Platform || (type == ColiderType::Platform && onTop));
 			const bool toggled = !toggle || toggle->active;
 			const bool crumbled = crumbling && crumbling->isAir;
-			const bool resolve = rightAngle && toggled && !crumbled;
+			const bool resolve = rightAngle && toggled && !crumbled && type != ColiderType::Zone;
 
 			if (!resolve)
 			{
@@ -601,19 +656,14 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				crumbling->active = true;
 			}
 
-			if (m_registry.all_of<Trampoline>(*colider.entity))
+			if (m_registry.all_of<Trampoline>(*colider.entity) && onTop)
 			{
 				m_registry.get<px::Animation>(*colider.entity).play("active");
 
-				transform.vel.y = -k_jumpVelocity * 3.f;
+				transform.vel.y = -20.f;
 				m_registry.get<Controllable>(entity).canJump = false;
 
 				m_jump.play();
-
-				auto impact = m_ctx.entities.get("impact").spawn(m_registry);
-				auto& impactTransform = m_registry.get<Transform>(impact);
-				impactTransform.pos = transform.pos;
-				impactTransform.oldPos = impactTransform.pos;
 			}
 		}
 
@@ -636,9 +686,25 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 				active = toggle->active;
 			}
 
-			if (active && innerHitbox.type != ColiderType::Platform)
+			if (!active)
+			{
+				return;
+			}
+
+			if (innerHitbox.type == ColiderType::Hazard)
 			{
 				restart(ctx);
+			}
+
+			if (innerHitbox.type == ColiderType::Zone)
+			{
+				if (auto* trigger = m_registry.try_get<Trigger>(innerEntity))
+				{
+					if (api.mapping.isPressed("Interact"))
+					{
+						trigger->active = !trigger->active;
+					}
+				}
 			}
 		});
 

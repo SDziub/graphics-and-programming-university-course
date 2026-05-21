@@ -1,5 +1,6 @@
 {
-	"type": "tile_hazard",
+	"type": "tile",
+	"colider": "hazard",
 	"sprite": "retractable_spike",
 	"toggle": true
 }

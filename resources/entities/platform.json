@@ -1,4 +1,5 @@
 {
-	"type": "tile_platform",
+	"type": "tile",
+	"colider": "platform",
 	"sprite": "platform"
 }

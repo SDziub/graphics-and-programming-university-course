@@ -56,6 +56,7 @@ Game::Game()
 	mapping.set("Down", px::InputId::S);
 	mapping.set("Confirm", px::InputId::Space);
 	mapping.set("Pause", px::InputId::Escape);
+	mapping.set("Interact", px::InputId::E);
 
 	m_ctx.tiles["empty"] = Tile{ Tile::Type::Air, "", "empty" };
 	m_ctx.tiles["solid_block"] = Tile{ Tile::Type::Solid, "solid_block", "solid_block" };
@@ -171,24 +172,26 @@ void Game::loadSprites()
 
 void Game::initPrefabGenerators()
 {
-	m_prefabGenerators.emplace("tile_hazard", [&](const auto& obj)
+	m_prefabGenerators.emplace("tile", [&](const auto& obj)
 	{
 		EntityPrefab prefab;
 		prefab.emplace<Stationary>();
-		prefab.emplace<Hitbox>(sf::FloatRect{ {0.25f, 0.25f}, {0.5f, 0.5f} }, ColiderType::Hazard);
-		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
-		if (obj.contains("toggle") && obj["toggle"] == true)
+		if (obj["colider"] == "platform")
 		{
-			prefab.emplace<Toggle>();
+			prefab.emplace<Hitbox>(sf::FloatRect{ {0.f, 0.f}, {1.f, 0.2f} }, ColiderType::Platform);
 		}
-		return prefab;
-	});
-
-	m_prefabGenerators.emplace("tile_platform", [&](const auto& obj)
-	{
-		EntityPrefab prefab;
-		prefab.emplace<Stationary>();
-		prefab.emplace<Hitbox>(sf::FloatRect{ {0.f, 0.f}, {1.f, 0.2f} }, ColiderType::Platform);
+		else if (obj["colider"] == "hazard")
+		{
+			prefab.emplace<Hitbox>(sf::FloatRect{ {0.15f, 0.15f}, {0.7f, 0.7f} }, ColiderType::Hazard);
+		}
+		else if (obj["colider"] == "solid")
+		{
+			prefab.emplace<Hitbox>(sf::FloatRect{ {0.f,0.f}, {1.f,1.f} }, ColiderType::Solid);
+		}
+		else if (obj["colider"] == "zone")
+		{
+			prefab.emplace<Hitbox>(sf::FloatRect{ {0.f,0.f}, {1.f,1.f} }, ColiderType::Zone);
+		}
 		prefab.emplace<px::Animation>(assets.clipMaps.get(obj["sprite"]));
 		if (obj.contains("crumbling") && obj["crumbling"] == true)
 		{
@@ -197,9 +200,17 @@ void Game::initPrefabGenerators()
 			crumbling.offTime = sf::seconds(5);
 			prefab.emplace<Crumbling>(crumbling);
 		}
+		else if (obj.contains("toggle") && obj["toggle"] == true)
+		{
+			prefab.emplace<Toggle>();
+		}
 		if (obj.contains("trampoline") && obj["trampoline"] == true)
 		{
 			prefab.emplace<Trampoline>();
+		}
+		if (obj.contains("trigger") && obj["trigger"] == true)
+		{
+			prefab.emplace<Trigger>();
 		}
 		return prefab;
 	});

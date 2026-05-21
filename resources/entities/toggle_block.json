@@ -1,0 +1,6 @@
+{
+  "type": "tile",
+  "colider": "solid",
+  "sprite": "toggle_block",
+  "toggle": true
+}

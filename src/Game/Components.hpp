@@ -10,7 +10,8 @@ enum class ColiderType : uint8_t
 	Physics,
 	Solid,
 	Platform,
-	Hazard
+	Hazard,
+	Zone
 };
 
 struct Hitbox
@@ -71,7 +72,6 @@ struct IsParticle
 struct Trigger
 {
 	bool active{};
-	sf::Time timer, accumulated;
 };
 
 struct Toggle

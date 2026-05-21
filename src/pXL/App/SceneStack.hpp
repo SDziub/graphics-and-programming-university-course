@@ -9,6 +9,7 @@
 #include <any>
 #include <utility>
 
+#include "../Math.hpp"
 #include "Scene.hpp"
 
 namespace px
@@ -266,7 +267,7 @@ namespace px
 			{
 				m_scenes[i].ptr->draw(dummyCtx);
 			}
-			ctx.window.setView(ctx.window.getDefaultView());
+			ctx.window.setView(px::getRenderTargetView(ctx.window));
 		}
 	}
 

@@ -1,5 +1,6 @@
 {
-  "type": "tile_platform",
+  "type": "tile",
+  "colider": "solid",
   "sprite": "fungi",
   "trampoline": true
 }

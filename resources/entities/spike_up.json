@@ -1,4 +1,5 @@
 {
-	"type": "tile_hazard",
+	"type": "tile",
+	"colider": "hazard",
 	"sprite": "spike_up"
 }

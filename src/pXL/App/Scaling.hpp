@@ -41,9 +41,29 @@ namespace px
 			return m_unit;
 		}
 
+		float getScalar() const
+		{
+			return m_scale.x;
+		}
+
 		sf::Vector2f getScale() const
 		{
 			return m_scale;
+		}
+
+		float getTrueUnit() const
+		{
+			return m_trueUnit;
+		}
+
+		float getTrueScalar() const
+		{
+			return m_trueScale.x;
+		}
+
+		sf::Vector2f getTrueScale() const
+		{
+			return m_trueScale;
 		}
 
 		sf::Vector2u getMinimumWindowSize() const
@@ -55,18 +75,25 @@ namespace px
 
 		void update()
 		{
-			sf::Vector2u minimumWindowSize = getMinimumWindowSize();
-			sf::Vector2u windowSize = m_window.getSize();
+			auto minimumWindowSize = static_cast<sf::Vector2f>(getMinimumWindowSize());
+			auto windowSize = static_cast<sf::Vector2f>(m_window.getSize());
 
 			float ratio = std::min(
-				floorf(windowSize.x / minimumWindowSize.x),
-				floorf(windowSize.y / minimumWindowSize.y)
+				windowSize.x / minimumWindowSize.x,
+				windowSize.y / minimumWindowSize.y
 			);
 
-			m_scale.x = ratio;
-			m_scale.y = ratio;
+			m_trueScale.x = ratio;
+			m_trueScale.y = ratio;
 
-			m_unit = m_unitPixels * ratio;
+			m_trueUnit = m_unitPixels * ratio;
+
+			float ratioFloored = floorf(ratio);
+
+			m_scale.x = ratioFloored;
+			m_scale.y = ratioFloored;
+
+			m_unit = m_unitPixels * ratioFloored;
 		}
 
 		const sf::Window& m_window;
@@ -74,6 +101,8 @@ namespace px
 		float m_unitPixels{ 16 };
 		sf::Vector2f m_scale;
 		float m_unit;
+		sf::Vector2f m_trueScale;
+		float m_trueUnit;
 
 		friend Engine;
 	};

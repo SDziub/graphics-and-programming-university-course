@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include <SFML/Graphics/Rect.hpp>
+#include <SFML/Graphics.hpp>
 
 namespace px
 {
@@ -20,6 +21,13 @@ namespace px
 			&& a.position.y <= b.position.y + b.size.y
 			&& a.position.x + a.size.x >= b.position.x
 			&& a.position.y + a.size.y >= b.position.y;
+	}
+
+	inline sf::View getRenderTargetView(const sf::RenderTarget& target)
+	{
+		auto targetSize = static_cast<sf::Vector2f>(target.getSize());
+		sf::FloatRect visibleArea{ { 0.f, 0.f }, targetSize };
+		return sf::View(visibleArea);
 	}
 
 	struct ColisionResult

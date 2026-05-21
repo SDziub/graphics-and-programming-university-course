@@ -1,0 +1,6 @@
+{
+  "type": "tile",
+  "colider": "zone",
+  "sprite": "button",
+  "trigger": true
+}
