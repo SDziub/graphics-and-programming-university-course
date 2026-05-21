@@ -19,53 +19,65 @@ namespace Scenes
 
 			m_gui.setFont("resources/Butterpop.otf");
 
-			auto panel = tgui::Panel::create();
-			m_gui.add(panel);
-			panel->setSize("50%", "40%");
-			panel->setPosition("25%", "30%");
-			panel->getRenderer()->setBackgroundColor({ 0,0,0,0 });
+			uint32_t y{};
+			auto setButton = [&](tgui::Button::Ptr& button)
+				{
+					button->setPosition("(parent.width - width) / 2", ("parent.height / 2 - 120 + " + std::to_string(y)).c_str());
+					y += 60;
+					button->setSize("200", "50");
+
+					auto renderer = button->getRenderer();
+					renderer->setRoundedBorderRadius(40);
+					renderer->setBorderColor({ 107, 62, 117 });
+					renderer->setBackgroundColor({ 234, 173, 237 });
+					renderer->setBackgroundColorDown({ 143, 211, 255 });
+					renderer->setBackgroundColorHover({ 168, 132, 243 });
+
+					m_gui.add(button);
+				};
 
 			auto label = tgui::Label::create("Pause Menu");
-			panel->add(label);
-			label->setPosition(0, 0);
-			label->setSize("100%", "25%");
+			m_gui.add(label);
+			label->setPosition("(parent.width - width) / 2", ("parent.height / 2 - 120 + " + std::to_string(y)).c_str());
+			y += 60;
+			label->setSize("200", "50");;
+			label->getRenderer()->setTextColor(tgui::Color::White);
 			label->setHorizontalAlignment(tgui::HorizontalAlignment::Center);
 			label->setVerticalAlignment(tgui::VerticalAlignment::Center);
 
 			auto button = tgui::Button::create("Resume");
-			panel->add(button);
 			button->onClick([&]()
-			{
-				api.comms.pop();
-			});
-			button->setPosition(0, "25%");
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+				{
+					api.comms.pop();
+				});
+			setButton(button);
 
 			button = tgui::Button::create("Settings");
-			panel->add(button);
 			button->onClick([&]()
-			{
-				api.comms.push("Settings");
-			});
-			button->setPosition(0, "50%");
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+				{
+					api.comms.push("Settings");
+				});
+			setButton(button);
 
-			button = tgui::Button::create("Back");
-			panel->add(button);
+			button = tgui::Button::create("Exit");
 			button->onClick([&]()
-			{
-				api.comms.popUntil("MainMenu");
-			});
-			button->setPosition(0, "75%");
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+				{
+					api.comms.popUntil("MainMenu");
+				});
+			setButton(button);
 		}
 
-		void onEvent(const sf::Event& event)
+		void onEvent(const sf::Event& event) override
 		{
 			m_gui.handleEvent(event);
+		}
+
+		void update(px::UpdateCtx& ctx) override
+		{
+			if (api.mapping.isPressed(px::InputId::Escape))
+			{
+				api.comms.pop();
+			}
 		}
 
 		void draw(px::DrawCtx& ctx) const override

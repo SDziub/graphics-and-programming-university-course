@@ -22,6 +22,7 @@ namespace px
 	struct EngineApi
 	{
 		SceneCommands& comms;
+		Transition& transition;
 		const Assets& assets;
 		const Mapping& mapping;
 		const Scaling& scaling;

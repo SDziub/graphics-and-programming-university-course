@@ -2,6 +2,7 @@
 
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
+#include <SFML/Audio.hpp>
 
 #include "pXL/pXL.hpp"
 
@@ -11,70 +12,70 @@ namespace Scenes
 	{
 	public:
 
-		MainMenu(px::SceneInitCtx& ctx, sf::RenderWindow& window) :
+		MainMenu(px::SceneInitCtx& ctx, sf::RenderWindow& window, Context& gctx) :
 			Scene(ctx),
 			m_gui(window),
-			m_window(window)
+			m_window(window),
+			m_click(gctx.sounds.at("menu_click"))
 		{
 			m_gui.setFont("resources/Butterpop.otf");
 
-			auto panel = tgui::Panel::create();
-			m_gui.add(panel);
-			panel->setSize("50%", "40%");
-			panel->setPosition("25%", "50%");
-			panel->getRenderer()->setBackgroundColor({ 0,0,0,0 });
+			uint32_t y{};
+			auto setButton = [&](tgui::Button::Ptr& button)
+				{
+					button->setPosition("(parent.width - width) / 2", ("parent.height / 2 - 120 + " + std::to_string(y)).c_str());
+					y += 60;
+					button->setSize("200", "50");
+
+					auto renderer = button->getRenderer();
+					renderer->setRoundedBorderRadius(40);
+					renderer->setBorderColor({ 107, 62, 117 });
+					renderer->setBackgroundColor({ 234, 173, 237 });
+					renderer->setBackgroundColorDown({ 143, 211, 255 });
+					renderer->setBackgroundColorHover({ 168, 132, 243 });
+
+					m_gui.add(button);
+				};
 
 			auto button = tgui::Button::create("Play");
-			panel->add(button);
 			button->onClick([&]()
-			{
-				ctx.transition.start([&]()
 				{
-					api.comms.push("Platforming");
+					api.transition.start([&]()
+						{
+							api.comms.push("Platforming");
+						});
 				});
-			});
-			button->setPosition(0, 0);
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+			setButton(button);
 
 			button = tgui::Button::create("Level Editor");
-			panel->add(button);
 			button->onClick([&]()
-			{
-				ctx.transition.start([&]()
-					{
-						api.comms.push("LevelEditor");
-					});
-			});
-			button->setPosition(0, "25%");
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+				{
+					api.transition.start([&]()
+						{
+							api.comms.push("LevelEditor");
+						});
+				});
+			setButton(button);
 
 			button = tgui::Button::create("Settings");
-			panel->add(button);
 			button->onClick([&]()
-			{
-				ctx.transition.start([&]()
 				{
-					api.comms.push("Settings");
+					api.transition.start([&]()
+						{
+							api.comms.push("Settings");
+						});
 				});
-			});
-			button->setPosition(0, "50%");
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+			setButton(button);
 
 			button = tgui::Button::create("Exit");
-			panel->add(button);
 			button->onClick([&]()
-			{
-				ctx.transition.start([&]()
 				{
-					m_window.close();
+					api.transition.start([&]()
+						{
+							m_window.close();
+						});
 				});
-			});
-			button->setPosition(0, "75%");
-			button->setSize("100%", "25%");
-			button->getRenderer()->setRoundedBorderRadius(16.f);
+			setButton(button);
 		}
 
 		void onEvent(const sf::Event& event) override
@@ -93,5 +94,7 @@ namespace Scenes
 
 		mutable tgui::Gui m_gui;
 		sf::Window& m_window;
+
+		sf::Sound m_click;
 	};
 }

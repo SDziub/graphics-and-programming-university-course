@@ -5,6 +5,8 @@
 
 #include "Game.hpp"
 
+#include <windows.h>
+
 namespace nl = nlohmann;
 
 Game::Game()
@@ -13,7 +15,6 @@ Game::Game()
 
 	m_music.openFromFile("resources/Etirwer (Looped).ogg");
 	m_music.setLooping(true);
-	m_music.play();
 
 	recursiveLoad("resources/textures", [&](const auto& path, const auto& name)
 	{
@@ -42,7 +43,7 @@ Game::Game()
 		SPDLOG_INFO("Sound loaded: {}", name);
 	});
 
-	scenes.registerScene("MainMenu", [&]() { return std::make_unique<Scenes::MainMenu>(apiScene, window); });
+	scenes.registerScene("MainMenu", [&]() { return std::make_unique<Scenes::MainMenu>(apiScene, window, m_ctx); });
 	scenes.registerScene("LevelEditor", [&]() { return std::make_unique<Scenes::LevelEditor>(apiScene, m_ctx); });
 	scenes.registerScene("Platforming", [&]() { return std::make_unique<Scenes::Platforming>(apiScene, m_ctx); });
 	scenes.registerScene("Pause", [&]() { return std::make_unique<Scenes::Pause>(apiScene, window); });
@@ -106,6 +107,10 @@ Game::Game()
 	cloudParticle.emplace<IsParticle>();
 	cloudParticle.emplace<px::Animation>(assets.clipMaps.get("particle"));
 	m_ctx.entities.set("cloud_particle", std::move(cloudParticle));
+
+	auto desktop = sf::VideoMode::getDesktopMode();
+	window.create(sf::VideoMode(desktop.size), "Nellie's Adventure", sf::Style::None);
+	m_music.play();
 }
 
 void Game::loadSprites()

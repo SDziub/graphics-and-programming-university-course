@@ -62,6 +62,7 @@ namespace px
 
 		EngineApi engApi{
 			scenes,
+			transition,
 			assets,
 			mapping,
 			scaling
@@ -84,19 +85,14 @@ namespace px
 	};
 
 	inline Engine::Engine() :
-		window(sf::VideoMode(sf::Vector2u{ 1280,720 }), "Game", sf::Style::Default),
 		scaling(window)
 	{
 		window.setKeyRepeatEnabled(false);
-		ImGui::SFML::Init(window);
-		ImGui::GetIO().FontGlobalScale = 2.0f;
 
 		scenes.setOnChangeCallback([&]() {
 			frameInput.newUpdate();
 			tickInput.newUpdate();
 		});
-
-		window.setMinimumSize(scaling.getMinimumWindowSize());
 	}
 
 	inline Engine::~Engine()
@@ -126,6 +122,9 @@ namespace px
 
 	inline void Engine::run()
 	{
+		ImGui::SFML::Init(window);
+		ImGui::GetIO().FontGlobalScale = 2.0f;
+
 		sf::Clock clock;
 		sf::Time acumulator;
 
