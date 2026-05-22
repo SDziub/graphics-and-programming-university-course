@@ -53,10 +53,6 @@ Game::Game()
 	mapping.set("Jump", px::InputId::Space);
 	mapping.set("Left", px::InputId::A);
 	mapping.set("Right", px::InputId::D);
-	mapping.set("Up", px::InputId::W);
-	mapping.set("Down", px::InputId::S);
-	mapping.set("Confirm", px::InputId::Space);
-	mapping.set("Pause", px::InputId::Escape);
 	mapping.set("Interact", px::InputId::E);
 
 	m_ctx.tiles["empty"] = Tile{ Tile::Type::Air, "", "empty" };
@@ -65,6 +61,38 @@ Game::Game()
 	assets.tileSprites.set("solid_block", px::TileSprite{ "solid_block" });
 
 	loadSprites();
+
+	{
+		nl::json json;
+		std::ifstream file("settings.json");
+
+		bool loaded = file.is_open();
+
+		if (file.is_open())
+		{
+			try
+			{
+				json << file;
+			}
+			catch (const std::exception& e)
+			{
+				loaded = false;
+			}
+		}
+
+		std::unordered_map<std::string, px::InputId> strToId;
+		for (size_t i{}; i < px::k_allButtonsCount; ++i)
+		{
+			auto id = static_cast<px::InputId>(i);
+			strToId.insert({ px::stringifyInputId(id), id });
+		}
+
+		sf::Listener::setGlobalVolume(loaded ? json["volume"].get<float>() : 100.f);
+		mapping.set("Left", !loaded? px::InputId::A : strToId.at(json["actions"]["Left"]));
+		mapping.set("Right", !loaded? px::InputId::D : strToId.at(json["actions"]["Right"]));
+		mapping.set("Jump", !loaded? px::InputId::Space : strToId.at(json["actions"]["Jump"]));
+		mapping.set("Interact", !loaded? px::InputId::E : strToId.at(json["actions"]["Interact"]));
+	}
 
 	recursiveLoad("resources/entities", [&](const auto& path, const auto& name)
 	{

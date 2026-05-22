@@ -1,0 +1,9 @@
+{
+    "volume": 100,
+    "actions":{
+        "Left": "A",
+        "Right": "D",
+        "Jump": "Space",
+        "Interact": "E"
+    }
+}

@@ -110,7 +110,7 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 
 	{
 		auto& stationary = m_registry.get<Stationary>(toggleBlock);
-		stationary.position = { 9.f, 16.f };
+		stationary.position = { 9.f, 18.f };
 	}
 
 	auto button = m_ctx.entities.get("button").spawn(m_registry);
@@ -188,7 +188,7 @@ void Scenes::Platforming::update(px::UpdateCtx& ctx)
 {
 	m_elapsed += ctx.dt;
 
-	if (api.mapping.isPressed("Pause"))
+	if (api.mapping.isPressed(px::InputId::Escape))
 	{
 		api.comms.push("Pause");
 	}
@@ -524,15 +524,15 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 			return;
 		}
 
-		if (m_timeSinceLastStep > sf::milliseconds(400) && controllable.grounded)
-		{
-			m_step.play();
-			m_timeSinceLastStep = sf::Time::Zero;
-		}
-
 		if (std::abs(transform.vel.x) > k_maxSpeed)
 		{
 			transform.vel.x = (transform.vel.x > 0.0f ? 1.0f : -1.0f) * k_maxSpeed;
+
+			if (m_timeSinceLastStep > sf::milliseconds(400) && controllable.grounded)
+			{
+				m_timeSinceLastStep = sf::Time::Zero;
+				m_step.play();
+			}
 		}
 	});
 }

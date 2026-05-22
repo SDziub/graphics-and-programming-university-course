@@ -59,7 +59,7 @@ namespace Scenes
 				});
 			setButton(button);
 
-			button = tgui::Button::create("Exit");
+			button = tgui::Button::create("Back");
 			button->onClick([&]()
 				{
 					api.comms.popUntil("MainMenu");

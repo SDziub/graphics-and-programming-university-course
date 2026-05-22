@@ -2,10 +2,11 @@
 
 #include <optional>
 #include <string>
-#include <string_view>
+#include <fstream>
 
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
+#include <nlohmann/json.hpp>
 
 #include "pXL/pXL.hpp"
 
@@ -22,11 +23,10 @@ namespace Scenes
 		{
 			m_gui.setFont("resources/Butterpop.otf");
 
-			/*uint32_t y{};
-			auto setButton = [&](std::string_view name, std::string& action)
+			uint32_t y{};
+			auto setButton = [&](tgui::Button::Ptr button, const std::string& action)
 				{
-					button->setPosition("(parent.width - width) / 2", ("parent.height / 2 - 120 + " + std::to_string(y)).c_str());
-					y += 60;
+					button->setPosition("(parent.width - width) / 2 + 200", ("parent.height / 2 - 180 + " + std::to_string(y)).c_str());
 					button->setSize("200", "50");
 
 					auto renderer = button->getRenderer();
@@ -36,43 +36,68 @@ namespace Scenes
 					renderer->setBackgroundColorDown({ 143, 211, 255 });
 					renderer->setBackgroundColorHover({ 168, 132, 243 });
 
-					m_gui.add(button);
-				};*/
+					auto label = tgui::Label::create(action.c_str());
+					label->setPosition("(parent.width - width) / 2 - 200", ("parent.height / 2 - 180 + " + std::to_string(y)).c_str());
+					label->setSize("200", "50");;
+					label->getRenderer()->setTextColor(tgui::Color::White);
+					label->setHorizontalAlignment(tgui::HorizontalAlignment::Center);
+					label->setVerticalAlignment(tgui::VerticalAlignment::Center);
 
-			auto scrollablePanel = tgui::ScrollablePanel::create({ "50%", "70%" });
-			scrollablePanel->setPosition("25%", "20%");
-			scrollablePanel->getRenderer()->setBackgroundColor({ 0,0,0,0 });
-			m_gui.add(scrollablePanel);
-			
-			float y = 0;
-			const float widgetY = 50.f;
-			const float gapY = 5.f;
+					m_gui.add(button, action);
+					m_gui.add(label);
 
-			auto keybinds = m_mapping.data();
+					y += 60;
+				};
 
+			auto label = tgui::Label::create("Pause Menu");
+			m_gui.add(label);
+			label->setPosition("(parent.width - width) / 2", ("parent.height / 2 - 180 + " + std::to_string(y)).c_str());
+			y += 60;
+			label->setSize("200", "50");;
+			label->getRenderer()->setTextColor(tgui::Color::White);
+			label->setHorizontalAlignment(tgui::HorizontalAlignment::Center);
+			label->setVerticalAlignment(tgui::VerticalAlignment::Center);
 
+			label = tgui::Label::create("Master Volume");
+			m_gui.add(label);
+			label->setPosition("(parent.width - width) / 2 - 200", ("parent.height / 2 - 180 + " + std::to_string(y)).c_str());
+			label->setSize("200", "50");;
+			label->getRenderer()->setTextColor(tgui::Color::White);
+			label->setHorizontalAlignment(tgui::HorizontalAlignment::Center);
+			label->setVerticalAlignment(tgui::VerticalAlignment::Center);
+
+			auto slider = tgui::Slider::create(0, 100);
+			slider->setValue(sf::Listener::getGlobalVolume());
+			slider->onValueChange([](float value)
+				{
+					sf::Listener::setGlobalVolume(value);
+				});
+			m_gui.add(slider);
+			slider->setPosition("(parent.width - width) / 2 + 200", ("parent.height / 2 - 180 + 20 + " + std::to_string(y)).c_str());
+			slider->setSize("200", "10");
+
+			auto renderer = slider->getRenderer();
+			renderer->setBorderColor({ 107, 62, 117 });
+			renderer->setTrackColor({ 234, 173, 237 });
+			renderer->setTrackColorHover({ 168, 132, 243 });
+
+			y += 60;
 
 			for (const auto& [action, key] : m_mapping.data())
 			{
-				auto label = tgui::Label::create(action);
-				label->setPosition(0, y);
-				label->setSize("50%", widgetY);
-				label->setHorizontalAlignment(tgui::HorizontalAlignment::Center);
-				label->setVerticalAlignment(tgui::VerticalAlignment::Center);
-				scrollablePanel->add(label);
-				auto button = tgui::Button::create();
-				button->setPosition("50%", y);
-				y += widgetY + gapY;
-				button->setSize("50%", widgetY);
-				button->setText(px::stringifyInputId(key));
+				auto button = tgui::Button::create(px::stringifyInputId(key));
 				button->onPress([=, this]()
 				{
 					this->m_rebinding = action;
-					button->setText("rebinding");
+					button->setText("Rebinding (ECS to cancel)");
 				});
-				button->getRenderer()->setRoundedBorderRadius(16.f);
-				scrollablePanel->add(button, action);
+				setButton(button, action);
 			}
+		}
+
+		~Settings()
+		{
+			saveSettings();
 		}
 
 		void onEvent(const sf::Event& event) override
@@ -118,6 +143,24 @@ namespace Scenes
 		}
 
 	private:
+
+		void saveSettings() const
+		{
+			nlohmann::json json;
+			
+			json["volume"] = sf::Listener::getGlobalVolume();
+
+			std::unordered_map<std::string, std::string> actions;
+			for (const auto& [action, key] : m_mapping.data())
+			{
+				actions.insert({ action, px::stringifyInputId(key) });
+			}
+
+			json["actions"] = actions;
+
+			std::ofstream file("settings.json");
+			file << json;
+		}
 
 		mutable tgui::Gui m_gui;
 		std::optional<std::string> m_rebinding;
