@@ -110,6 +110,7 @@ Game::Game()
 
 	auto desktop = sf::VideoMode::getDesktopMode();
 	window.create(sf::VideoMode(desktop.size), "Nellie's Adventure", sf::Style::None);
+	window.setVerticalSyncEnabled(true);
 	m_music.play();
 }
 

@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Backend/SFML-Graphics.hpp>
@@ -21,6 +22,23 @@ namespace Scenes
 		{
 			m_gui.setFont("resources/Butterpop.otf");
 
+			/*uint32_t y{};
+			auto setButton = [&](std::string_view name, std::string& action)
+				{
+					button->setPosition("(parent.width - width) / 2", ("parent.height / 2 - 120 + " + std::to_string(y)).c_str());
+					y += 60;
+					button->setSize("200", "50");
+
+					auto renderer = button->getRenderer();
+					renderer->setRoundedBorderRadius(40);
+					renderer->setBorderColor({ 107, 62, 117 });
+					renderer->setBackgroundColor({ 234, 173, 237 });
+					renderer->setBackgroundColorDown({ 143, 211, 255 });
+					renderer->setBackgroundColorHover({ 168, 132, 243 });
+
+					m_gui.add(button);
+				};*/
+
 			auto scrollablePanel = tgui::ScrollablePanel::create({ "50%", "70%" });
 			scrollablePanel->setPosition("25%", "20%");
 			scrollablePanel->getRenderer()->setBackgroundColor({ 0,0,0,0 });
@@ -29,6 +47,10 @@ namespace Scenes
 			float y = 0;
 			const float widgetY = 50.f;
 			const float gapY = 5.f;
+
+			auto keybinds = m_mapping.data();
+
+
 
 			for (const auto& [action, key] : m_mapping.data())
 			{
@@ -49,19 +71,13 @@ namespace Scenes
 					button->setText("rebinding");
 				});
 				button->getRenderer()->setRoundedBorderRadius(16.f);
-				scrollablePanel->add(button, "keybind_" + action);
+				scrollablePanel->add(button, action);
 			}
 		}
 
 		void onEvent(const sf::Event& event) override
 		{
-			if (api.mapping.isPressed(px::InputId::Escape))
-			{
-				api.comms.pop();
-				return;
-			}
-
-			if (m_rebinding)
+			if (m_rebinding && event.is<sf::Event::MouseButtonPressed>())
 			{
 				return;
 			}
@@ -73,12 +89,24 @@ namespace Scenes
 		{
 			if (!m_rebinding)
 			{
+				if (api.mapping.isPressed(px::InputId::Escape))
+				{
+					api.comms.pop();
+				}
+
+				return;
+			}
+
+			if (api.mapping.isPressed(px::InputId::Escape))
+			{
+				m_gui.get<tgui::Button>(*m_rebinding)->setText(px::stringifyInputId(m_mapping.data().at(*m_rebinding)));
+				m_rebinding.reset();
 				return;
 			}
 
 			if (const auto pressed = api.mapping.getJustPressed())
 			{
-				m_gui.get<tgui::Button>("keybind_" + m_rebinding.value())->setText(px::stringifyInputId(*pressed));
+				m_gui.get<tgui::Button>(m_rebinding.value())->setText(px::stringifyInputId(*pressed));
 				m_mapping.set(m_rebinding.value(), *pressed);
 				m_rebinding.reset();
 			}

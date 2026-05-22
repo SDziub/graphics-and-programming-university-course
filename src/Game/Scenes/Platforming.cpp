@@ -302,7 +302,7 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		}
 	}
 
-	auto view = m_registry.view<const px::Animation, const Transform>();
+	auto view = m_registry.view<const px::Animation, const Transform>(entt::exclude<Controllable>);
 
 	view.each([&](const auto& animation, const auto& transform) {
 		sf::Vector2f position = px::lerp(transform.oldPos, transform.pos, ctx.alpha) * static_cast<float>(unitPixels);
@@ -323,6 +323,17 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 		sprite.setScale(api.scaling.getScale());
 		ctx.window.draw(sprite);
 	});
+
+	auto playerView = m_registry.view<const px::Animation, const Transform, const Controllable>();
+
+	playerView.each([&](const auto& animation, const auto& transform, const auto& controllable) {
+		sf::Vector2f position = px::lerp(transform.oldPos, transform.pos, ctx.alpha) * static_cast<float>(unitPixels);
+
+		sf::Sprite sprite = animation.getSprite().value();
+		sprite.setPosition(position);
+		sprite.setScale(api.scaling.getScale());
+		ctx.window.draw(sprite);
+		});
 
 	/*auto hitboxView = m_registry.view<const Hitbox>();
 
@@ -365,6 +376,12 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 
 		ctx.window.draw(hitboxRectangle);
 	});*/
+
+	ctx.window.setView(px::getRenderTargetView(ctx.window));
+	sf::RectangleShape vignette(static_cast<sf::Vector2f>(ctx.window.getSize()));
+	vignette.setTexture(&api.assets.textures.get("vignette"));
+	vignette.setFillColor({ 0, 0, 0, 50 });
+	ctx.window.draw(vignette);
 }
 
 void Scenes::Platforming::animate(px::UpdateCtx& ctx)
@@ -454,7 +471,6 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		}
 		else
 		{
-			controllable.jumpBuffer = sf::seconds(999);
 			controllable.jumpBuffer += ctx.dt;
 		}
 
@@ -475,6 +491,7 @@ void Scenes::Platforming::playerControlSystem(px::UpdateCtx& ctx)
 		{
 			transform.vel.y = -k_jumpVelocity;
 			controllable.canJump = false;
+			controllable.jumpBuffer = sf::seconds(999);
 
 			m_jump.play();
 		}
