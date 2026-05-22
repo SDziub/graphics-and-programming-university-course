@@ -116,7 +116,10 @@ namespace Scenes
 			{
 				if (api.mapping.isPressed(px::InputId::Escape))
 				{
-					api.comms.pop();
+					api.transition.start([&]()
+						{
+							api.comms.pop();
+						});
 				}
 
 				return;
@@ -139,6 +142,14 @@ namespace Scenes
 
 		void draw(px::DrawCtx& ctx) const override
 		{
+			ctx.window.draw(px::Background(api.assets.backgrounds.get("settings"), 0.f));
+
+			ctx.window.setView(px::getRenderTargetView(ctx.window));
+			sf::RectangleShape vignette(static_cast<sf::Vector2f>(ctx.window.getSize()));
+			vignette.setTexture(&api.assets.textures.get("vignette"));
+			vignette.setFillColor({ 0, 0, 0, 150 });
+			ctx.window.draw(vignette);
+
 			m_gui.draw();
 		}
 

@@ -55,14 +55,20 @@ namespace Scenes
 			button = tgui::Button::create("Settings");
 			button->onClick([&]()
 				{
-					api.comms.push("Settings");
+					api.transition.start([&]()
+						{
+							api.comms.push("Settings");
+						});
 				});
 			setButton(button);
 
 			button = tgui::Button::create("Back");
 			button->onClick([&]()
 				{
-					api.comms.popUntil("MainMenu");
+					api.transition.start([&]()
+						{
+							api.comms.popUntil("MainMenu");
+						});
 				});
 			setButton(button);
 		}

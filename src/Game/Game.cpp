@@ -127,6 +127,14 @@ Game::Game()
 
 	assets.backgrounds.set("background", std::move(background));
 
+	px::BackgroundData settingsBackground(
+		{
+			{ assets.textures.get("settings_bg"), 0.f }
+		}
+	);
+
+	assets.backgrounds.set("settings", std::move(settingsBackground));
+
 	assets.font = sf::Font("resources/Butterpop.otf");
 	
 	EntityPrefab cloudParticle;
