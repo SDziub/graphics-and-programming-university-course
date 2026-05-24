@@ -21,7 +21,7 @@ namespace Scenes
 			m_gui(window),
 			m_mapping(mapping)
 		{
-			m_gui.setFont("resources/Butterpop.otf");
+			m_gui.setFont(RESOURCES "Butterpop.otf");
 
 			uint32_t y{};
 			auto setButton = [&](tgui::Button::Ptr button, const std::string& action)

@@ -18,7 +18,7 @@ namespace Scenes
 			m_window(window),
 			m_click(gctx.sounds.at("menu_click"))
 		{
-			m_gui.setFont("resources/Butterpop.otf");
+			m_gui.setFont(RESOURCES "Butterpop.otf");
 
 			uint32_t y{};
 			auto setButton = [&](tgui::Button::Ptr& button)

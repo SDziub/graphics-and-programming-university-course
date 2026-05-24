@@ -17,7 +17,7 @@ namespace Scenes
 		{
 			ctx.properties.setTransparency(true);
 
-			m_gui.setFont("resources/Butterpop.otf");
+			m_gui.setFont(RESOURCES "Butterpop.otf");
 
 			uint32_t y{};
 			auto setButton = [&](tgui::Button::Ptr& button)
