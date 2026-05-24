@@ -13,10 +13,10 @@ Game::Game()
 {
 	initPrefabGenerators();
 
-	m_music.openFromFile("resources/Etirwer (Looped).ogg");
+	m_music.openFromFile(RESOURCES "Etirwer (Looped).ogg");
 	m_music.setLooping(true);
 
-	recursiveLoad("resources/textures", [&](const auto& path, const auto& name)
+	recursiveLoad(RESOURCES "textures", [&](const auto& path, const auto& name)
 	{
 		sf::Texture texture;
 		if (!texture.loadFromFile(path))
@@ -30,7 +30,7 @@ Game::Game()
 		SPDLOG_INFO("Texture loaded: {}", name);
 	});
 
-	recursiveLoad("resources/sounds", [&](const auto& path, const auto& name)
+	recursiveLoad(RESOURCES "sounds", [&](const auto& path, const auto& name)
 	{
 		sf::SoundBuffer sound;
 		if (!sound.loadFromFile(path))
@@ -94,7 +94,7 @@ Game::Game()
 		mapping.set("Interact", !loaded? px::InputId::E : strToId.at(json["actions"]["Interact"]));
 	}
 
-	recursiveLoad("resources/entities", [&](const auto& path, const auto& name)
+	recursiveLoad(RESOURCES "entities", [&](const auto& path, const auto& name)
 	{
 		nl::json json;
 		std::ifstream file(path);
@@ -135,7 +135,7 @@ Game::Game()
 
 	assets.backgrounds.set("settings", std::move(settingsBackground));
 
-	assets.font = sf::Font("resources/Butterpop.otf");
+	assets.font = sf::Font(RESOURCES "Butterpop.otf");
 	
 	EntityPrefab cloudParticle;
 	cloudParticle.emplace<Transform>();
@@ -152,7 +152,7 @@ Game::Game()
 
 void Game::loadSprites()
 {
-	recursiveLoad("resources/sprites", [&](const auto& path, const auto& name)
+	recursiveLoad(RESOURCES "sprites", [&](const auto& path, const auto& name)
 	{
 		nl::json json;
 		std::ifstream file(path);
