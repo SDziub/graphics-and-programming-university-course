@@ -86,11 +86,14 @@ namespace Scenes
 			for (const auto& [action, key] : m_mapping.data())
 			{
 				auto button = tgui::Button::create(px::stringifyInputId(key));
-				button->onPress([=, this]()
-				{
-					this->m_rebinding = action;
-					button->setText("Rebinding (ECS to cancel)");
-				});
+				button->onPress([=this, weakButton = std::weak_ptr(button)]()
+					{
+						if (auto button = weakButton.lock())
+						{
+							this->m_rebinding = action;
+							button->setText("Rebinding (ECS to cancel)");
+						}
+					});
 				setButton(button, action);
 			}
 		}
