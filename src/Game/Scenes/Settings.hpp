@@ -86,7 +86,7 @@ namespace Scenes
 			for (const auto& [action, key] : m_mapping.data())
 			{
 				auto button = tgui::Button::create(px::stringifyInputId(key));
-				button->onPress([=this, weakButton = std::weak_ptr(button)]()
+				button->onPress([=, weakButton = std::weak_ptr(button)]()
 					{
 						if (auto button = weakButton.lock())
 						{
