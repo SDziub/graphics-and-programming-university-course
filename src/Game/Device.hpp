@@ -1,31 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <cstdint>
+#include "pXl/pXL.hpp"
 
-#include <SFML/System.hpp>
-#include <entt/entt.hpp>
-
-#include "Components.hpp"
-
-enum class DeviceType : uint8_t
+class Device
 {
-	And, Or, Timed
-};
+public:
 
-struct DeviceIO
-{
-	entt::entity entity;
-	bool inverted{};
-};
-
-struct Device
-{
-	Device(DeviceType type = DeviceType::And) :
-		type(type)
-	{}
-
-	std::vector<DeviceIO> in, out;
-	sf::Time onTime, offTime, accumulated;
-	DeviceType type;
+	virtual void update(px::UpdateCtx& ctx) = 0;
 };
