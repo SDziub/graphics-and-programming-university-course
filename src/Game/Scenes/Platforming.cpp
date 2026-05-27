@@ -8,46 +8,129 @@
 #include "Game/Constants.hpp"
 #include "Game/Device.hpp"
 
+struct PairHash
+{
+	template <typename T1, typename T2>
+	size_t operator()(const std::pair<T1, T2>& p) const {
+		auto h1 = std::hash<T1>{}(p.first);
+		auto h2 = std::hash<T2>{}(p.second);
+		return h1 ^ (h2 << 1);
+	}
+};
+
 Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 	Scene(ctx),
 	m_ctx(gctx),
-	m_map(sf::Vector2u(40, 20), m_ctx.tiles["empty"]),
+	m_map(sf::Vector2u(60, 12), m_ctx.tiles["empty"]),
 	m_jump(m_ctx.sounds.at("jump")),
 	m_landing(m_ctx.sounds.at("landing")),
 	m_step(m_ctx.sounds.at("step"))
 {
-	const char* mapBuilder[]{
-		"########################################",
-		"#                                      #",
-		"#                                ##    #",
-		"#   ######          #####              #",
-		"#                                      #",
-		"#          ###               ##        #",
-		"#                                      #",
-		"#                       ##             #",
-		"#### ##############                    #",
-		"#                                      #",
-		"#  #                  ####             #",
-		"#     ##    #                          #",
-		"#                           #          #",
-		"#                                      #",
-		"#    ##   ###                  #       #",
-		"#                    #                 #",
-		"##               #         #           #",
-		"#                                      #",
-		"#                                      #",
-		"########################################",
+	struct DIO
+	{
+		std::pair<int32_t, int32_t> pos;
+		bool invert{};
 	};
+
+	struct DevicePrefab
+	{
+		DeviceType type;
+		std::vector<DIO> in, out;
+	};
+
+	const char* mapBuilder[]
+	{
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"                                                            ",
+		"     iiiiiiiiiiii                                           ",
+		"############################################################",
+	};
+
+	std::vector<DevicePrefab> devicePrefabs{
+		{
+			DeviceType::Timed,
+			{},
+			{
+				{ {5, 10} },
+				{ {6, 10} },
+				{ {7, 10} },
+				{ {8, 10}, true},
+				{ {9, 10}, true },
+				{ {10, 10}, true },
+				{ {11, 10} },
+				{ {12, 10} },
+				{ {13, 10} },
+				{ {14, 10}, true },
+				{ {15, 10}, true },
+				{ {16, 10}, true }
+			}
+		}
+	};
+
+	std::unordered_map<std::pair<int32_t, int32_t>, entt::entity, PairHash> tileEntities;
 
 	for (uint32_t y = 0; y < m_map.size().y; ++y)
 	{
 		for (uint32_t x = 0; x < m_map.size().x; ++x)
 		{
-			if (mapBuilder[y][x] == '#')
+			if (m_ctx.tempMapping.count(mapBuilder[y][x]))
 			{
-				m_map.at({ x, y }) = m_ctx.tiles.at("solid_block");
+				auto& [name, isEntity] = m_ctx.tempMapping.at(mapBuilder[y][x]);
+
+				if (!isEntity)
+				{
+					m_map.at({ x, y }) = m_ctx.tiles.at(name);
+				}
+				else
+				{
+					auto entity = m_ctx.entities.get(name).spawn(m_registry);
+					auto& stationary =  m_registry.get<Stationary>(entity);
+					stationary.position = { float(x), float(y) };
+					tileEntities.insert({ {x, y}, entity });
+				}
 			}
 		}
+	}
+
+	for (const auto& [type, in, out] : devicePrefabs)
+	{
+		Device device{ type };
+
+		if (type == DeviceType::Timed)
+		{
+			device.onTime = sf::seconds(5);
+			device.offTime = sf::seconds(5);
+		}
+		
+		for (auto e : in)
+		{
+			if (!tileEntities.count(e.pos))
+			{
+				continue;
+			}
+
+			device.in.push_back({ tileEntities.at(e.pos), e.invert });
+		}
+
+		for (auto e : out)
+		{
+			if (!tileEntities.count(e.pos))
+			{
+				continue;
+			}
+
+			device.out.push_back({ tileEntities.at(e.pos), e.invert });
+		}
+
+		m_devices.push_back(std::move(device));
 	}
 
 	{
@@ -57,85 +140,12 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		transform.oldPos = transform.pos;
 	}
 
-	{
-		auto spike = m_ctx.entities.get("spike_up").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(spike);
-		stationary.position = {8.f, 7.f};
-	}
+	auto mapSize = static_cast<sf::Vector2f>(m_map.size());
 
-	{
-		auto spike = m_ctx.entities.get("spike_down").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(spike);
-		stationary.position = { 8.f, 1.f };
-	}
-
-	{
-		auto spike = m_ctx.entities.get("spike_right").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(spike);
-		stationary.position = { 14.f, 5.f };
-	}
-
-	{
-		auto platform = m_ctx.entities.get("platform").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(platform);
-		stationary.position = { 6.f, 6.f };
-	}
-
-	{
-		auto platform = m_ctx.entities.get("cloud").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(platform);
-		stationary.position = { 5.f, 6.f };
-	}
-
-	{
-		auto platform = m_ctx.entities.get("fungi").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(platform);
-		stationary.position = { 16.f, 7.f };
-	}
-
-	{
-		auto platform = m_ctx.entities.get("fungi").spawn(m_registry);
-		auto& stationary = m_registry.get<Stationary>(platform);
-		stationary.position = { 19.f, 18.f };
-	}
-
-	auto retractableSpike = m_ctx.entities.get("retractable_spike").spawn(m_registry);
-
-	{
-		auto& stationary = m_registry.get<Stationary>(retractableSpike);
-		stationary.position = { 7.f, 7.f };
-	}
-
-	auto toggleBlock = m_ctx.entities.get("toggle_block").spawn(m_registry);
-
-	{
-		auto& stationary = m_registry.get<Stationary>(toggleBlock);
-		stationary.position = { 9.f, 18.f };
-	}
-
-	auto button = m_ctx.entities.get("button").spawn(m_registry);
-
-	{
-		auto& stationary = m_registry.get<Stationary>(button);
-		stationary.position = { 8.f, 18.f };
-	}
-
-	{
-		Device device;
-		device.type = DeviceType::Timed;
-		device.onTime = sf::seconds(5);
-		device.offTime = sf::seconds(5);
-		device.out.push_back({ retractableSpike });
-		m_devices.push_back(std::move(device));
-	}
-
-	{
-		Device device;
-		device.type = DeviceType::And;
-		device.in.push_back({ button });
-		device.out.push_back({ toggleBlock });
-		m_devices.push_back(std::move(device));
-	}
+	m_bounds.push_back(sf::FloatRect{ {-1.f,-1.f},{mapSize.x + 2.f, 1.f} });
+	m_bounds.push_back(sf::FloatRect{ {-1.f,-1.f},{1.f, mapSize.y} });
+	m_bounds.push_back(sf::FloatRect{ {-1.f,mapSize.y},{mapSize.x + 2.f, 1.f} });
+	m_bounds.push_back(sf::FloatRect{ {mapSize.x,-1.f},{1.f, mapSize.y} });
 }
 
 void Scenes::Platforming::restart(px::UpdateCtx& ctx)
@@ -275,9 +285,9 @@ void Scenes::Platforming::draw(px::DrawCtx& ctx) const
 
 		sf::Vector2f position = px::lerp(m_oldCameraPosition, m_cameraPosition, ctx.alpha);
 		position.x = std::min(position.x, m_map.size().x - halfScreenTiles.x);
-		position.y = std::min(position.y, m_map.size().y - halfScreenTiles.y);
-		position.x = std::max(position.x, halfScreenTiles.x);
 		position.y = std::max(position.y, halfScreenTiles.y);
+		position.x = std::max(position.x, halfScreenTiles.x);
+		position.y = std::min(position.y, m_map.size().y - halfScreenTiles.y);
 
 		ctx.window.draw(px::Background(api.assets.backgrounds.get("background"), position.x * unitPixels, m_elapsed));
 
@@ -576,6 +586,12 @@ void Scenes::Platforming::movementAndColisionSystem(px::UpdateCtx& ctx)
 
 		static std::vector<Colider> coliders;
 		coliders.clear();
+
+		for (auto bound : m_bounds)
+		{
+			px::ColisionResult result = px::sweptAABB(entityRect, bound, deltaDistance);
+			coliders.push_back({ result.time, bound });
+		}
 
 		for (uint32_t y{}; y < size.y; ++y)
 		{

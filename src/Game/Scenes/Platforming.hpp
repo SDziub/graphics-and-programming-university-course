@@ -47,5 +47,9 @@ namespace Scenes
 
 		sf::Sound m_jump, m_landing, m_step;
 		sf::Time m_timeSinceLastStep;
+
+		std::vector<sf::FloatRect> m_bounds;
+
+		sf::FloatRect m_endPosition;
 	};
 }

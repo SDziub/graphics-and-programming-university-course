@@ -56,9 +56,9 @@ Game::Game()
 	mapping.set("Interact", px::InputId::E);
 
 	m_ctx.tiles["empty"] = Tile{ Tile::Type::Air, "", "empty" };
-	m_ctx.tiles["solid_block"] = Tile{ Tile::Type::Solid, "solid_block", "solid_block" };
+	m_ctx.tiles["dirt"] = Tile{ Tile::Type::Solid, "dirt", "dirt" };
 
-	assets.tileSprites.set("solid_block", px::TileSprite{ "solid_block" });
+	assets.tileSprites.set("dirt", px::TileSprite("tiles/dirt"));
 
 	loadSprites();
 
@@ -147,6 +147,7 @@ Game::Game()
 	auto desktop = sf::VideoMode::getDesktopMode();
 	window.create(sf::VideoMode(desktop.size), "Nellie's Adventure", sf::Style::None);
 	window.setVerticalSyncEnabled(true);
+	window.setKeyRepeatEnabled(false);
 	m_music.play();
 }
 

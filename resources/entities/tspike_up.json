@@ -1,6 +1,6 @@
 {
 	"type": "tile",
 	"colider": "hazard",
-	"sprite": "retractable_spike",
+	"sprite": "tspike_up",
 	"toggle": true
 }

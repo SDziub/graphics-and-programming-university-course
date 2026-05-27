@@ -1,0 +1,6 @@
+{
+	"type": "tile",
+	"colider": "hazard",
+	"sprite": "tspike_right",
+	"toggle": true
+}
