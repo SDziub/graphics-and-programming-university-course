@@ -6,7 +6,8 @@
 
 #include "Platforming.hpp"
 #include "Game/Constants.hpp"
-#include "Game/Device.hpp"
+#include "Game/DeprecatedDevice.hpp"
+#include "../Level.hpp"
 
 struct PairHash
 {
@@ -32,9 +33,9 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		bool invert{};
 	};
 
-	struct DevicePrefab
+	struct DeprecatedDevicePrefab
 	{
-		DeviceType type;
+		DeprecatedDeviceType type;
 		std::vector<DIO> in, out;
 	};
 
@@ -54,9 +55,9 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 		"############################################################",
 	};
 
-	std::vector<DevicePrefab> devicePrefabs{
+	std::vector<DeprecatedDevicePrefab> devicePrefabs{
 		{
-			DeviceType::Timed,
+			DeprecatedDeviceType::Timed,
 			{},
 			{
 				{ {5, 10} },
@@ -102,9 +103,9 @@ Scenes::Platforming::Platforming(px::SceneInitCtx& ctx, Context& gctx) :
 
 	for (const auto& [type, in, out] : devicePrefabs)
 	{
-		Device device{ type };
+		DeprecatedDevice device{ type };
 
-		if (type == DeviceType::Timed)
+		if (type == DeprecatedDeviceType::Timed)
 		{
 			device.onTime = sf::seconds(5);
 			device.offTime = sf::seconds(5);
@@ -227,7 +228,7 @@ void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 	{
 		switch (device.type)
 		{
-		case DeviceType::Timed:
+		case DeprecatedDeviceType::Timed:
 			{
 				bool state = device.accumulated % (device.onTime + device.offTime) <= device.onTime;
 
@@ -242,7 +243,7 @@ void Scenes::Platforming::fixedUpdate(px::UpdateCtx& ctx)
 				device.accumulated += ctx.dt;
 				break;
 			}
-		case DeviceType::And:
+		case DeprecatedDeviceType::And:
 			{
 				bool state = std::all_of(device.in.begin(), device.in.end(), [&](const auto& in)
 					{
